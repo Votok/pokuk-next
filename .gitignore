@@ -46,3 +46,6 @@ next-env.d.ts
 .eslintcache
 .turbo
 .swc
+
+# local editor settings
+/.vscode/settings.json
