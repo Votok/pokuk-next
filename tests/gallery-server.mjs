@@ -12,7 +12,8 @@ export async function gallery(t) {
   async function stop() {
     if (app && app.exitCode === null && app.signalCode === null) {
       const exited = once(app, "exit");
-      app.kill();
+      // A browser can still hold an HTTP connection during test teardown.
+      app.kill("SIGKILL");
       await exited;
     }
   }

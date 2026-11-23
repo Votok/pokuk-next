@@ -37,7 +37,12 @@ test("upright private-metadata-free previews survive replacement of the gallery 
   let base = await start();
   const html = await (await fetch(base + event)).text();
   assert.doesNotMatch(html, /FullFileName|invented\/private|Invented Camera|2031:04:03|GPSLatitude/);
-  const tile = html.match(/\/previews\/small\/[0-9a-f]{64}/)[0];
+  const tiles = [...html.matchAll(/<img[^>]+src="(\/previews\/small\/[^"]+)"/g)].map(match => match[1]);
+  const tile = tiles[0];
+  assert.equal((await fetch(base + tile.replace("/small/", "/small/eA"))).status, 404);
+  await rename(path.join(dir, "catalog.json"), path.join(dir, "offline.json"));
+  base = await start();
+  assert.equal((await fetch(base + tiles[1].replace("small", "screen"))).status, 200);
   const original = "/originals/Zlut%C3%A1%203.jpg";
   const bytes = async url => Buffer.from(await (await fetch(base + url)).arrayBuffer());
   const before = await bytes(original);

@@ -1,16 +1,16 @@
 import sharp from "sharp";
-import { originalName } from "../../../../lib/catalog";
+import { createHash } from "node:crypto";
+import { publishedBlob } from "../../../../lib/preview-url";
 import { readOriginal, readPreview, writePreview } from "../../../../lib/storage";
 
 export async function GET(_: Request, { params }: RouteContext<"/previews/[size]/[id]">) {
   const { size, id } = await params;
-  if (!["small", "screen"].includes(size) || !/^[a-f0-9]{64}$/.test(id)) return new Response(null, { status: 404 });
-  const key = `v1-${size}-${id}.jpg`;
+  const name = publishedBlob(id);
+  if (!["small", "screen"].includes(size) || !name) return new Response(null, { status: 404 });
+  const key = `v1-${size}-${createHash("sha256").update(name).digest("hex")}.jpg`;
   try {
     let bytes = await readPreview(key);
     if (!bytes) {
-      const name = await originalName(id);
-      if (!name) return new Response(null, { status: 404 });
       const edge = size === "small" ? 640 : 2560;
       bytes = await sharp(await readOriginal(name)).autoOrient()
         .resize(edge, edge, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 84 }).toBuffer();

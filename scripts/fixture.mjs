@@ -19,7 +19,7 @@ export async function seed(dir) {
   const album = { Name: albumName, FriendlyName: "Tři barvy", Files: files };
   await writeFile(path.join(dir, "catalog.json"), JSON.stringify({ Years: [
     { Year: 2030, GalleryEvents: [{ ...album, FriendlyName: "Minulý výlet" }] },
-    { Year: 2031, GalleryEvents: [{ Name: "A", FriendlyName: "Prázdné album", Files: [] }, album] }
+    { Year: 2031, GalleryEvents: [{ Name: "Álbum", FriendlyName: "Prázdné album", Files: [] }, album] }
   ] }));
 }
 if (import.meta.main) await seed(process.env.GALLERY_FIXTURE_DIR || ".fixture");

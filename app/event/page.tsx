@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
-import { openCatalog } from "../../lib/catalog";
+import { findEvent } from "../../lib/catalog";
 import { Unavailable } from "../unavailable";
 import { Grid } from "./grid";
 
 async function lookup(props: PageProps<"/event">) {
   const { year, name } = await props.searchParams;
-  const years = await openCatalog();
-  if (!years) return null;
-  const event = years.find(entry => String(entry.year) === year)?.events.find(entry => entry.name === name);
-  if (!event) redirect("/");
+  const event = await findEvent(year, name);
+  if (event === undefined) redirect("/");
   return event;
 }
 export async function generateMetadata(props: PageProps<"/event">) {

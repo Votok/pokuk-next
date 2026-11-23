@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { previewUrls } from "./preview-url";
 import { cache } from "react";
 import { fixture, readRevision } from "./storage";
 
@@ -8,22 +8,19 @@ type PublishedEvent = { Name: string; FriendlyName: string; Files: PublishedFile
 type PublishedYear = { Year: number; GalleryEvents: PublishedEvent[] };
 
 function parse(json: string) {
-  const originals = new Map<string, string>();
+  const byName = new Intl.Collator("cs");
   const { Years }: { Years: PublishedYear[] } = JSON.parse(json);
-  const years = Years.sort((a, b) => b.Year - a.Year).map(year => ({
+  return Years.sort((a, b) => b.Year - a.Year).map(year => ({
     year: year.Year,
-    events: year.GalleryEvents.sort((a, b) => a.Name < b.Name ? 1 : a.Name > b.Name ? -1 : 0).map(event => ({
+    events: year.GalleryEvents.sort((a, b) => byName.compare(b.Name, a.Name)).map(event => ({
       name: event.Name, title: event.FriendlyName,
       photos: event.Files.map(file => {
         const original = file.AzureFullUlr;
         if (!(fixture && original.startsWith("/originals/")) && !["http:", "https:"].includes(new URL(original).protocol)) throw new Error("Invalid photo URL");
-        const id = createHash("sha256").update(original).digest("hex");
-        originals.set(id, file.AzureLikeFileName);
-        return { id, original };
+        return { original, ...previewUrls(file.AzureLikeFileName) };
       })
     }))
   }));
-  return { years, originals };
 }
 let current: { revision: string; data: ReturnType<typeof parse> } | undefined;
 async function refresh() {
@@ -36,11 +33,13 @@ async function refresh() {
   return data;
 }
 export const openCatalog = cache(async () => {
-  try { return (await refresh()).years; } catch { return null; }
+  try { return await refresh(); } catch { return null; }
 });
-export async function originalName(id: string) {
-  return current?.data.originals.get(id) ?? (await refresh()).originals.get(id);
-}
+export const findEvent = cache(async (year: string | string[] | undefined, name: string | string[] | undefined) => {
+  const years = await openCatalog();
+  if (!years) return null;
+  return years.find(entry => String(entry.year) === year)?.events.find(entry => entry.name === name);
+});
 export function eventUrl(year: number, name: string) {
   return "/event?" + new URLSearchParams({ year: String(year), name });
 }

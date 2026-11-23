@@ -6,7 +6,7 @@ export default async function Index() {
   if (!years) return <Unavailable href="/" />;
   return <><h1>Pokuk</h1>{years.map(({ year, events }) => <section key={year}><h2>{year}</h2>
     <div className="cards">{events.map(({ name, title, photos }) => <a className="card" key={name} href={eventUrl(year, name)}>
-      {photos.length ? <img loading="lazy" src={'/previews/small/' + photos[0].id} alt="" /> : <span className="empty">Bez nahledu</span>}
+      {photos.length ? <img loading="lazy" src={photos[0].small} alt="" /> : <span className="empty">Bez nahledu</span>}
       <h3>{title}</h3><span>{photos.length} fotek</span>
     </a>)}</div></section>)}</>;
 }

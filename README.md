@@ -37,14 +37,14 @@ Leave `GALLERY_FIXTURE_DIR` unset for Blob Storage. Supply the following through
 | GALLERY_CATALOG_BLOB | Existing JSON blob name |
 | GALLERY_PREVIEW_CONTAINER | Separate, existing writable container for generated previews |
 
-The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. Original links retain their exact published spelling. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
+The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. Original links retain their exact published spelling. Each preview URL carries a signed blob name so another instance can serve an open album during a catalog outage. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
 
 ## Trace an event request
 
 Open an event directly, then advance the lightbox with the Network panel open. Which action needs the latest published catalog?
 
 1. Opening the URL runs the event Server Component. It checks the catalog revision and resolves the exact year and name. React shares the check with the document-title lookup during this render.
-2. The server renders the heading and photo anchors into HTML. The grid receives only the display title and ordered photo IDs and links. Its props travel to the browser, so private publisher fields must be removed before this step.
+2. The server renders the heading and photo anchors into HTML. The grid receives only the display title and ordered preview and original links. Its props travel to the browser, so private publisher fields must be removed before this step.
 3. Once React attaches the click handler, pressing an arrow changes the selected photo in browser state. The browser can request its screen preview. The event page does not render again.
 
 Disable JavaScript and predict the destination before clicking the second tile. The existing HTML anchor still works. [Next.js guide to Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
