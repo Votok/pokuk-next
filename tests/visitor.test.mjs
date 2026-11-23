@@ -6,6 +6,13 @@ import { browserFor, gallery } from "./gallery-server.mjs";
 
 const currentEvent = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
 
+async function waitForZoom(page, photo) {
+  await page.waitForFunction(
+    (image) => image.getBoundingClientRect().width > image.offsetWidth + 10,
+    await photo.elementHandle(),
+  );
+}
+
 test("visitors can retry the same index or event URL after a catalog outage", async (t) => {
   const { dir, start } = await gallery(t);
   const catalog = path.join(dir, "catalog.json");
@@ -118,7 +125,7 @@ test("browse years, open empty events and resolve exact shared event URLs", asyn
 });
 
 test("share, browse, zoom, retry one photo and open a published original", async (t) => {
-  const { start } = await gallery(t);
+  const { dir, start } = await gallery(t);
   const base = await start();
   const browser = await browserFor(t);
   const page = await browser.newPage();
@@ -139,32 +146,63 @@ test("share, browse, zoom, retry one photo and open a published original", async
     "/originals/Purpurov%C3%A1.jpg",
   ]);
 
+  // The open event must keep working when a catalog check would fail.
+  const catalog = path.join(dir, "catalog.json");
+  const offline = path.join(dir, "offline.json");
+  await rename(catalog, offline);
+  const galleryRequests = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.origin === base) galleryRequests.push(url.pathname);
+  });
+
   const selectedTile = await tiles.nth(1).locator("img").getAttribute("src");
   await page.route(base + selectedTile.replace("/small/", "/screen/"), (route) => route.abort(), {
     times: 1,
   });
+
   await tiles.nth(1).focus();
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Zkusit fotku znovu" }).click();
+  const viewer = page.getByRole("dialog", { name: "Prohlížeč fotek" });
+  const original = viewer.getByRole("link", { name: "Originál" });
+  const selected = viewer.getByRole("img", { name: "Tři barvy · 2" });
+  const retry = viewer.getByRole("button", { name: "Zkusit fotku znovu" });
 
-  const zoom = page.getByRole("button", { name: "Přiblížit" });
-  await zoom.click();
-  await page.getByRole("button", { name: "Oddálit" }).click();
+  await retry.click();
+  await selected.evaluate((img) => img.decode());
+  assert.equal(await original.getAttribute("href"), originals[1]);
+  await retry.waitFor({ state: "hidden" });
+
+  await selected.hover();
+  await page.mouse.wheel(0, -180);
+  await waitForZoom(page, selected);
+  await viewer.getByRole("button", { name: "Oddálit" }).click();
+
   await page.keyboard.press("ArrowRight");
-  await page.waitForFunction(
-    (href) => document.querySelector("a.original")?.getAttribute("href") === href,
-    originals[2],
-  );
-  await page.getByRole("button", { name: "Předchozí" }).click();
-  await page.waitForFunction(
-    (href) => document.querySelector("a.original")?.getAttribute("href") === href,
-    originals[1],
-  );
+  await viewer.getByRole("img", { name: "Tři barvy · 3" }).waitFor();
+  await page.keyboard.press("ArrowLeft");
+  await selected.waitFor();
+  await viewer.getByRole("button", { name: "Předchozí" }).click();
+  await viewer.getByRole("img", { name: "Tři barvy · 1" }).waitFor();
+  await viewer.getByRole("button", { name: "Další" }).click();
+  await selected.waitFor();
+
   await page.keyboard.press("Escape");
   await page.waitForFunction(
     () => document.activeElement === document.querySelectorAll(".grid a")[1],
   );
+  assert.ok(galleryRequests.every((url) => url.startsWith("/previews/")));
 
+  await tiles.first().click();
+  await viewer.getByRole("img", { name: "Tři barvy · 1" }).waitFor();
+  await viewer.getByRole("button", { name: "Další" }).click();
+  await selected.waitFor();
+  assert.equal(await original.getAttribute("href"), originals[1]);
+  await original.click();
+  assert.equal(page.url(), base + originals[1]);
+  assert.ok(await page.locator("img").evaluate((img) => img.naturalWidth > 0));
+
+  await rename(offline, catalog);
   const plain = await browser.newPage({ javaScriptEnabled: false });
   for (const [index, original] of originals.entries()) {
     await plain.goto(shared);
@@ -186,15 +224,16 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
   const file = path.join(dir, "catalog.json");
   const data = JSON.parse(await readFile(file, "utf8"));
   const album = data.Years[1].GalleryEvents[1];
-  const first = album.Files[0];
+  const [portraitPhoto, blue, purple] = album.Files;
+  album.Files = [blue, portraitPhoto, purple];
 
   for (let i = 0; i < 90; i++) {
     const name = "Barva-" + i + ".jpg";
     await link(
-      path.join(dir, "originals", first.AzureLikeFileName),
+      path.join(dir, "originals", portraitPhoto.AzureLikeFileName),
       path.join(dir, "originals", name),
     );
-    const photo = { ...first, AzureLikeFileName: name, AzureFullUlr: "/originals/" + name };
+    const photo = { ...portraitPhoto, AzureLikeFileName: name, AzureFullUlr: "/originals/" + name };
     album.Files.push(photo);
     data.Years[1].GalleryEvents.push({ Name: "B" + i, FriendlyName: "Barva " + i, Files: [photo] });
   }
@@ -202,8 +241,11 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
   await writeFile(file, JSON.stringify(data));
   const base = await start();
   const browser = await browserFor(t);
+  const viewport = { width: 390, height: 760 };
+  const deviceScaleFactor = 3;
   const page = await browser.newPage({
-    viewport: { width: 390, height: 760 },
+    viewport,
+    deviceScaleFactor,
     hasTouch: true,
     isMobile: true,
   });
@@ -245,14 +287,25 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
   assert.equal((await row.boundingBox()).y, before.y);
   await verifyLazy(".grid img");
 
-  await images.first().scrollIntoViewIfNeeded();
+  await images.nth(1).scrollIntoViewIfNeeded();
   await page.waitForLoadState("networkidle");
   assert.ok(![...requests].some((url) => url.startsWith("/previews/screen/")));
-  await images.first().tap();
-  const portrait = page.locator("img[src*='/previews/screen/']").first();
+  await images.nth(1).tap();
+  const viewer = page.getByRole("dialog");
+  const portrait = viewer.getByRole("img", { name: "Tři barvy · 2" });
   await portrait.evaluate((img) => img.decode());
-  const box = await portrait.boundingBox();
-  assert.ok(box.height > box.width && box.height <= 760 && box.width <= 390);
+  assert.match(await portrait.getAttribute("src"), /^\/previews\/screen\//);
+  const { naturalWidth, naturalHeight, width, height, x, y } = await portrait.evaluate((img) => ({
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+    ...img.getBoundingClientRect().toJSON(),
+  }));
+  assert.ok(naturalHeight > naturalWidth);
+  assert.ok(Math.abs(width / height - naturalWidth / naturalHeight) < 0.01);
+  assert.ok(x >= 0 && y >= 0 && x + width <= viewport.width && y + height <= viewport.height);
+  assert.ok(
+    naturalWidth >= width * deviceScaleFactor && naturalHeight >= height * deviceScaleFactor,
+  );
 
   const touch = await page.context().newCDPSession(page);
   const gesture = (type, points) =>
@@ -263,12 +316,11 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
   await gesture("touchStart", [[305, 390]]);
   for (const x of [270, 225, 180, 125, 80]) await gesture("touchMove", [[x, 390]]);
   await gesture("touchEnd", []);
-  await page.waitForFunction(() =>
-    document.querySelector("a.original")?.getAttribute("href")?.includes("Azurov"),
-  );
-  const landscape = page.locator("img[src*='/previews/screen/']").filter({ visible: true }).first();
+
+  const landscape = viewer.getByRole("img", { name: "Tři barvy · 3" });
   await landscape.evaluate((img) => img.decode());
-  const unzoomed = await landscape.boundingBox();
+  await viewer.getByRole("button", { name: "Přiblížit" }).and(page.locator(":enabled")).waitFor();
+  await landscape.tap({ trial: true });
 
   await gesture("touchStart", [
     [155, 380],
@@ -280,9 +332,6 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
       [195 + spread, 380],
     ]);
   await gesture("touchEnd", []);
-  await page.waitForFunction((width) => {
-    const image = document.querySelector("img[alt='Tři barvy · 2'][src*='/screen/']");
-    return image && image.getBoundingClientRect().width > width + 10;
-  }, unzoomed.width);
+  await waitForZoom(page, landscape);
   assert.ok(![...requests].some((url) => url.startsWith("/originals/")));
 });

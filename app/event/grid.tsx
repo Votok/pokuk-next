@@ -10,6 +10,7 @@ export function Grid({ title, photos }: { title: string; photos: Photo[] }) {
   const [index, setIndex] = useState(-1);
   const [attempts, setAttempts] = useState<Record<string, number>>({});
   const opener = useRef<HTMLAnchorElement>(null);
+
   const slides = useMemo(
     () =>
       photos.map(({ screen }, i) => ({
@@ -18,6 +19,7 @@ export function Grid({ title, photos }: { title: string; photos: Photo[] }) {
       })),
     [title, photos, attempts],
   );
+
   return (
     <>
       <div className="grid">
@@ -47,6 +49,11 @@ export function Grid({ title, photos }: { title: string; photos: Photo[] }) {
         controller={{ aria: true }}
         on={{ view: ({ index }) => setIndex(index), exited: () => opener.current?.focus() }}
         labels={{
+          Lightbox: "Prohlížeč fotek",
+          Carousel: "Posuvná galerie",
+          "Photo gallery": title,
+          Slide: "Fotka",
+          "{index} of {total}": "{index} z {total}",
           Close: "Zavřít",
           Previous: "Předchozí",
           Next: "Další",

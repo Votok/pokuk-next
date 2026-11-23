@@ -12,7 +12,12 @@ npm run fixture
 GALLERY_FIXTURE_DIR=.fixture npm run dev
 ```
 
-Open <http://localhost:3000>. Select **Tři barvy**, copy its URL, then open the URL in a fresh tab. Select the second tile, advance to the purple photo and open **Originál**. Try the arrow keys, Escape, wheel zoom, touch swipe and pinch. Escape should return focus to the tile you opened. With JavaScript disabled, each tile opens its original directly. The empty event and the identically named event in 2030 have their own links.
+1. Open <http://localhost:3000> and select **Tři barvy** under **2031**. Copy the event URL and open it directly in a fresh tab. Both paths show the **Tři barvy** heading.
+2. Open the first (yellow) tile, whose file is named `Zlutá 3.jpg`. Use **Další** to advance to the blue photo, then **Originál** to open `/originals/Azurov%C3%A1.jpg`. The catalog puts the yellow photo before the blue one even though their filenames sort the other way.
+3. Return to the event. Use the wheel to zoom, zoom back out, and navigate with the arrow keys. Escape should return focus to the tile that opened the viewer. On a phone, swipe to the next photo and pinch to zoom. The Network panel should show a screen preview when opening a photo, and an original request only after selecting **Originál**.
+4. Open the event with JavaScript disabled. Each tile opens its published original directly.
+
+After the production build and browser setup below, run `node --test tests/visitor.test.mjs` to replay the proof. It also opens a non-first upright portrait at a simulated 3× phone resolution and checks that one failed preview can be retried in the open album while the catalog is unavailable.
 
 ## Format code
 
