@@ -80,9 +80,19 @@ test("share, browse, zoom, retry one photo and open a published original", async
   assert.equal(await page.title(), "Minulý výlet");
 
   const plain = await browser.newPage({ javaScriptEnabled: false });
+  for (const [index, original] of originals.entries()) {
+    await plain.goto(shared);
+    assert.equal(await plain.title(), "Tři barvy");
+    assert.equal(await plain.getByRole("heading", { level: 1 }).textContent(), "Tři barvy");
+
+    await plain.locator(".grid a").nth(index).click();
+    assert.equal(plain.url(), base + original);
+    assert.equal(await plain.locator("img").evaluate((image) => image.naturalWidth > 0), true);
+  }
+
   await plain.goto(shared);
-  await plain.locator(".grid a").first().click();
-  assert.equal(plain.url(), base + originals[0]);
+  await plain.getByRole("link", { name: "Zpět" }).click();
+  assert.equal(plain.url(), base + "/");
 });
 
 test("a phone loads nearby covers and tiles, reserves rows and opens an upright portrait", async (t) => {
