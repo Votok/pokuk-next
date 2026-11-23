@@ -36,6 +36,7 @@ Leave `GALLERY_FIXTURE_DIR` unset for Blob Storage. Supply the following through
 | GALLERY_CONTAINER | Existing container holding catalog and originals |
 | GALLERY_CATALOG_BLOB | Existing JSON blob name |
 | GALLERY_PREVIEW_CONTAINER | Separate, existing writable container for generated previews |
+| GALLERY_PREVIEW_SIGNING_KEY | Random server secret shared by all gallery instances. Keep it stable across restarts and storage credential rotation so open albums retain working preview links. |
 
 The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. Original links retain their exact published spelling. Each preview URL carries a signed blob name so another instance can serve an open album during a catalog outage. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
 

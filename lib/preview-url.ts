@@ -4,8 +4,8 @@ import { fixture } from "./storage";
 
 // A second instance can verify the published blob name without reopening the catalog.
 function signature(encoded: string) {
-  const key = fixture ? "local-invented-gallery" : process.env.AZURE_STORAGE_CONNECTION_STRING;
-  if (!key) throw new Error("Gallery storage is unavailable");
+  const key = fixture ? "local-invented-gallery" : process.env.GALLERY_PREVIEW_SIGNING_KEY;
+  if (!key) throw new Error("Preview signing key is unavailable");
   return createHmac("sha256", key).update("pokuk-preview-v1:" + encoded).digest("base64url");
 }
 export function previewUrls(name: string) {
