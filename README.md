@@ -1,2 +1,50 @@
-# pokuk-next
-a new version of personal photo gallery
+# Pokuk
+
+Pokuk reads the .NET uploader’s published photo catalog and serves a Czech gallery with Next.js App Router.
+
+## Run the invented gallery
+
+Use Node.js 24. From the repository root run
+
+```sh
+npm ci
+npm run fixture
+GALLERY_FIXTURE_DIR=.fixture npm run dev
+```
+
+Open <http://localhost:3000>. Select **Tři barvy**, copy its URL, then open the URL in a fresh tab. Select the second tile, advance to the purple photo and open **Originál**. Try the arrow keys, Escape, wheel zoom, touch swipe and pinch. Escape should return focus to the tile you opened. With JavaScript disabled, each tile opens its original directly. The empty event and the identically named event in 2030 have their own links.
+
+## Verify a change
+
+```sh
+npm run lint
+npm run typecheck
+npm run build
+npx playwright-core install chromium
+npm test
+```
+
+On Linux, add `--with-deps` to the browser installation command if system libraries are missing. Set `CHROMIUM_PATH` to use an existing Chrome executable. Tests start production servers on ephemeral loopback ports. They create disposable catalogs and generated photos, inspect responses and browser requests, and exercise publication, outages and preview reuse after restart.
+
+## Read the published catalog
+
+Leave `GALLERY_FIXTURE_DIR` unset for Blob Storage. Supply the following through the server environment.
+
+| Variable | Purpose |
+| --- | --- |
+| AZURE_STORAGE_CONNECTION_STRING | Server-side storage connection |
+| GALLERY_CONTAINER | Existing container holding catalog and originals |
+| GALLERY_CATALOG_BLOB | Existing JSON blob name |
+| GALLERY_PREVIEW_CONTAINER | Separate, existing writable container for generated previews |
+
+The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. Original links retain their exact published spelling. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
+
+## Trace an event request
+
+Open an event directly, then advance the lightbox with the Network panel open. Which action needs the latest published catalog?
+
+1. Opening the URL runs the event Server Component. It checks the catalog revision and resolves the exact year and name. React shares the check with the document-title lookup during this render.
+2. The server renders the heading and photo anchors into HTML. The grid receives only the display title and ordered photo IDs and links. Its props travel to the browser, so private publisher fields must be removed before this step.
+3. Once React attaches the click handler, pressing an arrow changes the selected photo in browser state. The browser can request its screen preview. The event page does not render again.
+
+Disable JavaScript and predict the destination before clicking the second tile. The existing HTML anchor still works. [Next.js guide to Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
