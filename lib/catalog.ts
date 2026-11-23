@@ -35,6 +35,7 @@ async function refresh() {
   const response = await readRevision(previous?.revision);
   if (!response && previous) return previous.data;
   if (!response) throw new Error("Missing revision");
+
   const data = parse(response.json);
   current = { revision: response.revision, data };
   return data;

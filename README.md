@@ -14,6 +14,12 @@ GALLERY_FIXTURE_DIR=.fixture npm run dev
 
 Open <http://localhost:3000>. Select **Tři barvy**, copy its URL, then open the URL in a fresh tab. Select the second tile, advance to the purple photo and open **Originál**. Try the arrow keys, Escape, wheel zoom, touch swipe and pinch. Escape should return focus to the tile you opened. With JavaScript disabled, each tile opens its original directly. The empty event and the identically named event in 2030 have their own links.
 
+## Format code
+
+Run `npm run format` to format gallery code. In VS Code, open
+`pokuk-next.code-workspace` and install its recommended Prettier extension
+for format-on-save. CI runs `npm run format:check`.
+
 ## Verify a change
 
 ```sh

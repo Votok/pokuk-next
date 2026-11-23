@@ -16,6 +16,8 @@
 
 ## Working agreement
 
+- Leave a blank line between functions and methods. In longer functions,
+  separate distinct steps with a blank line.
 - Follow spec-driven development. Agree on scope and acceptance criteria in
   a GitHub issue before implementing it. Work from that spec and verify the
   result against it.

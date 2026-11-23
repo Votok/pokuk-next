@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function Index() {
   const years = await openCatalog();
   if (!years) return <Unavailable href="/" />;
+
   return (
     <>
       <h1>Pokuk</h1>

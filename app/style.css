@@ -1,16 +1,76 @@
-:root { color-scheme: light; font-family: "Avenir Next", system-ui, sans-serif; color: #202923; background: #f7f6f0; }
-* { box-sizing: border-box; }
-body { margin: 0; }
-main { max-width: 78rem; margin: auto; padding: clamp(1.2rem,5vw,5rem); }
-h1, h2, h3 { font-family: "Iowan Old Style", Georgia, serif; }
-h1 { font-size: clamp(3rem,8vw,7rem); letter-spacing: -.045em; line-height: 1; margin: .4em 0; }
-h2 { font-size: 2rem; margin: 1.5em 0 .6em; border-bottom: 1px solid #a3afa5; }
-h3 { margin: .45em 0 .1em; font-size: 1.5rem; }
-a { color: inherit; text-underline-offset: .2em; }
-.card { text-decoration: none; }
-a:hover h3 { text-decoration: underline; }
-.cards, .grid { display: grid; gap: 1.3rem; grid-template-columns: repeat(auto-fill,minmax(min(100%,15rem),1fr)); }
-.grid { margin: 2rem 0; gap: .6rem; grid-template-columns: repeat(auto-fill,minmax(min(42%,13rem),1fr)); }
-.card img, .grid img, .empty { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #e0e3d8; }
-.empty { display: grid; place-content: center; }
-.original { color: white; align-self: center; margin: 0 .5rem; }
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", system-ui, sans-serif;
+  color: #202923;
+  background: #f7f6f0;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 78rem;
+  margin: auto;
+  padding: clamp(1.2rem, 5vw, 5rem);
+}
+h1,
+h2,
+h3 {
+  font-family: "Iowan Old Style", Georgia, serif;
+}
+h1 {
+  font-size: clamp(3rem, 8vw, 7rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin: 0.4em 0;
+}
+h2 {
+  font-size: 2rem;
+  margin: 1.5em 0 0.6em;
+  border-bottom: 1px solid #a3afa5;
+}
+h3 {
+  margin: 0.45em 0 0.1em;
+  font-size: 1.5rem;
+}
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+.card {
+  text-decoration: none;
+}
+a:hover h3 {
+  text-decoration: underline;
+}
+.cards,
+.grid {
+  display: grid;
+  gap: 1.3rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+.grid {
+  margin: 2rem 0;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(42%, 13rem), 1fr));
+}
+.card img,
+.grid img,
+.empty {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  background: #e0e3d8;
+}
+.empty {
+  display: grid;
+  place-content: center;
+}
+.original {
+  color: white;
+  align-self: center;
+  margin: 0 0.5rem;
+}

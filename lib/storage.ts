@@ -24,6 +24,7 @@ export async function readRevision(previous?: string) {
     const revision = createHash("sha256").update(bytes).digest("hex");
     return previous === revision ? null : { revision, json: bytes.toString() };
   }
+
   const blob = container("GALLERY_CONTAINER").getBlobClient(required("GALLERY_CATALOG_BLOB"));
   try {
     const response = await blob.download(0, undefined, { conditions: { ifNoneMatch: previous } });
@@ -78,12 +79,10 @@ export async function writePreview(key: string, bytes: Buffer) {
         blobHTTPHeaders: { blobContentType: "image/jpeg" },
       });
     } catch (error) {
-      if (
-        !(
-          error instanceof RestError &&
-          ["BlobAlreadyExists", "ConditionNotMet"].includes(error.code ?? "")
-        )
-      )
+      if (!(
+        error instanceof RestError &&
+        ["BlobAlreadyExists", "ConditionNotMet"].includes(error.code ?? "")
+      ))
         throw error;
     }
   }

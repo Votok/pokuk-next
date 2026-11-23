@@ -23,6 +23,7 @@ export default async function Event(props: PageProps<"/event">) {
     }
     return <Unavailable href={"/event?" + query} />;
   }
+
   return (
     <>
       <a href="/">Zpět</a>
