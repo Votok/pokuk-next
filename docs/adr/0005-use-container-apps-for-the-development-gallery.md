@@ -6,14 +6,17 @@ Next.js server still needs to check the catalog when a page opens and
 generate missing photo previews.
 
 Use Azure Container Apps Consumption with zero minimum replicas as the
-target host on the existing subscription. The existing App Service can
-host tests before the move. This avoids maintaining a separate Azure test
-app. Use isolated test storage with invented fixtures. The gallery reads
+target host on the personal subscription. Run the first Azure smoke test
+on this host while the legacy gallery serves visitors on B1. The
+[App Service preflight](https://github.com/Votok/pokuk-next/issues/23#issuecomment-7113803001)
+confirmed that B1 lacks deployment slots. Testing on Container Apps
+verifies the target host directly. Use isolated test storage with
+invented fixtures. The gallery reads
 the test catalog and originals and writes generated previews.
 
-Reusing the current App Service plan is convenient for testing. Moving
-to Container Apps allows replica compute charges to stop between visits.
-Before switching, compare the current gallery costs with expected compute,
+Container Apps allows replica compute charges to stop between visits.
+Before provisioning the [smoke test](https://github.com/Votok/pokuk-next/issues/22),
+compare the current gallery costs with expected compute,
 storage, transfer, logging and registry charges. Include any period of
 overlap with App Service and verify that the credit and spending limit
 cover the intended use. The budget allows zero additional out-of-pocket
