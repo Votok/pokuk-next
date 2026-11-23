@@ -27,7 +27,10 @@ export async function readRevision(previous?: string) {
 
   const blob = container("GALLERY_CONTAINER").getBlobClient(required("GALLERY_CATALOG_BLOB"));
   try {
-    const response = await blob.download(0, undefined, { conditions: { ifNoneMatch: previous } });
+    const response = await blob.download(0, undefined, {
+      conditions: { ifNoneMatch: previous },
+      abortSignal: AbortSignal.timeout(10_000),
+    });
     const chunks: Buffer[] = [];
     for await (const chunk of response.readableStreamBody!) chunks.push(Buffer.from(chunk));
     return {

@@ -1,39 +1,120 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFile, writeFile, rename } from "node:fs/promises";
+import { rename } from "node:fs/promises";
+import { createServer } from "node:http";
 import path from "node:path";
 import sharp from "sharp";
 import { gallery } from "./gallery-server.mjs";
 
 const event = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
 
-test("each page checks the published revision and offers same-page recovery", async (t) => {
-  const { dir, start } = await gallery(t);
-  const catalog = path.join(dir, "catalog.json");
-  const published = JSON.parse(await readFile(catalog, "utf8"));
-  const base = await start();
-  const page = async (url) => (await fetch(base + url)).text();
+test("the Blob reader checks its cached ETag on every page open", async (t) => {
+  const { start } = await gallery(t);
+  const requests = [];
+  let revision = '"first"';
+  let access = "denied";
+  const events = [
+    {
+      Name: "Prvni",
+      FriendlyName: "První výlet",
+      Files: [
+        {
+          AzureFullUlr: "https://example.invalid/photos/first.jpg",
+          AzureLikeFileName: "first.jpg",
+          FullFileName: "/invented/private/first.jpg",
+        },
+      ],
+    },
+  ];
 
-  for (const state of ["cold", "warm"]) {
-    await rename(catalog, catalog + ".offline");
-    for (const url of ["/", event]) {
-      const html = await page(url);
-      assert.match(html, /Galerie je dočasně nedostupná/);
-      assert.ok(html.includes('href="' + url.replace("&", "&amp;") + '"'), state);
-      assert.doesNotMatch(html, /Tři barvy/);
+  const blob = createServer((req, res) => {
+    const condition = req.headers["if-none-match"];
+    requests.push({
+      method: req.method,
+      path: new URL(req.url, "http://localhost").pathname,
+      condition,
+    });
+
+    if (access === "denied") {
+      res.writeHead(403, { "x-ms-error-code": "AuthorizationFailure" }).end();
+    } else if (condition === revision) {
+      res.writeHead(304, { etag: revision }).end();
+    } else {
+      const json = "\uFEFF" + JSON.stringify({ Years: [{ Year: 2031, GalleryEvents: events }] });
+      res.writeHead(200, { etag: revision, "content-length": Buffer.byteLength(json) });
+      if (access === "stalled") res.flushHeaders();
+      else res.end(json);
     }
+  });
 
-    await rename(catalog + ".offline", catalog);
-    assert.match(await page(event), /<title>Tři barvy<\/title>/);
-    assert.match(await page("/"), /Tři barvy/);
+  await new Promise((resolve, reject) => {
+    blob.once("error", reject);
+    blob.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(() => {
+    blob.close();
+    blob.closeAllConnections();
+  });
+
+  const base = await start({
+    GALLERY_FIXTURE_DIR: "",
+    AZURE_STORAGE_CONNECTION_STRING:
+      `BlobEndpoint=http://127.0.0.1:${blob.address().port}/testaccount;` +
+      "AccountName=testaccount;SharedAccessSignature=sp=r&sig=invented-catalog-secret",
+    GALLERY_CONTAINER: "gallery",
+    GALLERY_CATALOG_BLOB: "published.json",
+    GALLERY_PREVIEW_SIGNING_KEY: "invented-signing-key",
+  });
+  const first = "/event?year=2031&name=Prvni";
+  const second = "/event?year=2031&name=Druhy";
+
+  async function openPage(url, expectedIfNoneMatch) {
+    const response = await fetch(base + url, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
+    assert.match(response.headers.get("cache-control"), /\bno-store\b/);
+    const html = await response.text();
+    assert.doesNotMatch(
+      html,
+      /invented-catalog-secret|invented-signing-key|published\.json|testaccount|FullFileName|invented\/private/,
+    );
+
+    assert.deepEqual(requests.splice(0), [
+      {
+        method: "GET",
+        path: "/testaccount/gallery/published.json",
+        condition: expectedIfNoneMatch,
+      },
+    ]);
+    return html;
   }
 
-  published.Years[1].GalleryEvents.push({ Name: "Z", FriendlyName: "Nová událost", Files: [] });
-  await writeFile(catalog, JSON.stringify(published));
-  assert.match(await page("/event?year=2031&name=Z"), /<h1>Nová událost<\/h1>/);
-  assert.match(await page("/"), /Nová událost/);
+  for (const condition of [undefined, '"first"']) {
+    for (const url of ["/", first]) {
+      const html = await openPage(url, condition);
+      assert.match(html, /Galerie je dočasně nedostupná/);
+      assert.doesNotMatch(html, /První výlet/);
+    }
 
-  const unknown = await fetch(base + "/event?year=2031&name=z", {
+    access = "ready";
+    assert.match(await openPage(first, condition), /<h1>První výlet<\/h1>/);
+    assert.match(await openPage("/", '"first"'), /<h3>První výlet<\/h3>/);
+    access = "denied";
+  }
+
+  revision = '"second"';
+  events.push({ Name: "Druhy", FriendlyName: "Druhý výlet", Files: [] });
+  access = "stalled";
+  const unavailable = await openPage(second, '"first"');
+  assert.match(unavailable, /Galerie je dočasně nedostupná/);
+  assert.match(unavailable, />Zkusit znovu<\/a>/);
+
+  access = "ready";
+  assert.match(await openPage(second, '"first"'), /<h1>Druhý výlet<\/h1>/);
+  assert.match(await openPage("/", '"second"'), /<h3>Druhý výlet<\/h3>/);
+
+  const unknown = await fetch(base + "/event?year=2031&name=druhy", {
     redirect: "manual",
     headers: { "user-agent": "Googlebot" },
   });

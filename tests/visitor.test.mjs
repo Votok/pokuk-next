@@ -1,15 +1,53 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import path from "node:path";
-import { link, readFile, writeFile } from "node:fs/promises";
+import { link, readFile, rename, writeFile } from "node:fs/promises";
 import { chromium } from "playwright-core";
 import { gallery } from "./gallery-server.mjs";
+
+const currentEvent = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
 
 async function browserFor(t) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
   t.after(() => browser.close());
   return browser;
 }
+
+test("visitors can retry the same index or event URL after a catalog outage", async (t) => {
+  const { dir, start } = await gallery(t);
+  const catalog = path.join(dir, "catalog.json");
+  const offline = path.join(dir, "offline.json");
+  const base = await start();
+  const browser = await browserFor(t);
+  const index = await browser.newPage({ javaScriptEnabled: false });
+  const event = await browser.newPage({ javaScriptEnabled: false });
+  const pages = [
+    [index, base + "/"],
+    [event, base + currentEvent],
+  ];
+
+  for (const state of ["cold", "warm"]) {
+    await rename(catalog, offline);
+    for (const [page, url] of pages) {
+      await page.goto(url);
+      assert.equal(page.url(), url, state);
+      assert.equal(
+        await page.getByRole("heading", { level: 1 }).textContent(),
+        "Galerie je dočasně nedostupná",
+        state,
+      );
+      assert.equal(await page.getByText("Tři barvy", { exact: true }).count(), 0, state);
+    }
+
+    await rename(offline, catalog);
+    for (const [page, url] of pages) {
+      await page.getByRole("link", { name: "Zkusit znovu", exact: true }).click();
+      assert.equal(page.url(), url, state);
+      assert.ok(await page.getByRole("heading", { name: "Tři barvy", exact: true }).isVisible());
+    }
+    assert.equal(await event.title(), "Tři barvy");
+  }
+});
 
 test("browse years, open empty events and resolve exact shared event URLs", async (t) => {
   const { dir, start } = await gallery(t);
@@ -40,10 +78,9 @@ test("browse years, open empty events and resolve exact shared event URLs", asyn
     assert.deepEqual(await section.getByRole("heading", { level: 3 }).allTextContents(), titles);
   }
 
-  const current = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
   const previous = "/event?year=2030&name=V%C3%BDlet+%26+t%C5%99i";
   const card = page.getByRole("link", { name: "Tři barvy 3 fotek", exact: true });
-  assert.equal(await card.getAttribute("href"), current);
+  assert.equal(await card.getAttribute("href"), currentEvent);
   const cover = await card.locator("img").getAttribute("src");
   const previousCard = page.getByRole("link", { name: "Minulý výlet 1 fotek", exact: true });
   assert.equal(await previousCard.getAttribute("href"), previous);
@@ -61,7 +98,7 @@ test("browse years, open empty events and resolve exact shared event URLs", asyn
   await page.getByRole("link", { name: "Zpět" }).click();
   assert.equal(page.url(), base + "/");
 
-  await page.goto(base + current);
+  await page.goto(base + currentEvent);
   assert.equal(await page.title(), "Tři barvy");
   assert.equal(await page.getByRole("heading", { level: 1 }).textContent(), "Tři barvy");
   const first = page.locator(".grid a").first();

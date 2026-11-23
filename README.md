@@ -30,7 +30,7 @@ npx playwright-core install chromium
 npm test
 ```
 
-On Linux, add `--with-deps` to the browser installation command if system libraries are missing. Set `CHROMIUM_PATH` to use an existing Chrome executable. Tests start production servers on ephemeral loopback ports. They create disposable catalogs and generated photos, inspect responses and browser requests, and exercise publication, outages and preview reuse after restart.
+On Linux, add `--with-deps` to the browser installation command if system libraries are missing. Set `CHROMIUM_PATH` to use an existing Chrome executable. Tests start production servers on ephemeral loopback ports. A local HTTP endpoint exercises the Azure SDK's ETag handling without Azure credentials, and a browser test clicks through recovery from cold and warm outages with JavaScript disabled. The tests also use generated photos to check preview reuse after restart.
 
 ## Read the published catalog
 
@@ -44,7 +44,7 @@ Leave `GALLERY_FIXTURE_DIR` unset for Blob Storage. Supply the following through
 | GALLERY_PREVIEW_CONTAINER | Separate, existing writable container for generated previews |
 | GALLERY_PREVIEW_SIGNING_KEY | Random server secret shared by all gallery instances. Keep it stable across restarts and storage credential rotation so open albums retain working preview links. |
 
-The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. Original links retain their exact published spelling. Each preview URL carries a signed blob name so another instance can serve an open album during a catalog outage. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
+The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. If the download exceeds 10 seconds, the page offers a retry. Original links retain their exact published spelling. Each preview URL carries a signed blob name so another instance can serve an open album during a catalog outage. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
 
 ## Trace an event request
 
@@ -57,3 +57,5 @@ Open an event directly, then advance the lightbox with the Network panel open. W
 Disable JavaScript and predict the destination before clicking the second tile. The existing HTML anchor still works. [Next.js guide to Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
 
 Copy the **Tři barvy** URL and try changing just the year to `2030`, then try changing the uppercase `V` in the `name` parameter to lowercase. Next.js gives the Server Component the decoded name `Výlet & tři` for the original URL. The catalog uses both the year and the exact name to decide which event to show or whether to redirect to the index.
+
+During an outage, **Zkusit znovu** is an HTML link that opens the same page again. Predict what happens if Blob Storage returns `304 Not Modified` on that retry. The new App Router request renders the Server Component again, and the matching ETag lets it use the parsed catalog already in memory.
