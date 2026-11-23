@@ -11,6 +11,82 @@ async function browserFor(t) {
   return browser;
 }
 
+test("browse years, open empty events and resolve exact shared event URLs", async (t) => {
+  const { dir, start } = await gallery(t);
+  const catalog = path.join(dir, "catalog.json");
+  const data = JSON.parse(await readFile(catalog, "utf8"));
+  // A three-digit year distinguishes numeric from string ordering.
+  data.Years.unshift({ Year: 999, GalleryEvents: [] });
+  await writeFile(catalog, JSON.stringify(data));
+
+  const base = await start();
+  const browser = await browserFor(t);
+  const page = await browser.newPage({ javaScriptEnabled: false });
+  page.setDefaultTimeout(10000);
+
+  await page.goto(base);
+  assert.deepEqual(await page.getByRole("heading", { level: 2 }).allTextContents(), [
+    "2031",
+    "2030",
+    "999",
+  ]);
+  for (const [year, titles] of [
+    ["2031", ["Tři barvy", "Zcela prázdné album"]],
+    ["2030", ["Minulý výlet"]],
+  ]) {
+    const section = page.locator("section").filter({
+      has: page.getByRole("heading", { level: 2, name: year, exact: true }),
+    });
+    assert.deepEqual(await section.getByRole("heading", { level: 3 }).allTextContents(), titles);
+  }
+
+  const current = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
+  const previous = "/event?year=2030&name=V%C3%BDlet+%26+t%C5%99i";
+  const card = page.getByRole("link", { name: "Tři barvy 3 fotek", exact: true });
+  assert.equal(await card.getAttribute("href"), current);
+  const cover = await card.locator("img").getAttribute("src");
+  const previousCard = page.getByRole("link", { name: "Minulý výlet 1 fotek", exact: true });
+  assert.equal(await previousCard.getAttribute("href"), previous);
+  const previousCover = await previousCard.locator("img").getAttribute("src");
+
+  const empty = page.getByRole("link", {
+    name: "Bez nahledu Zcela prázdné album 0 fotek",
+    exact: true,
+  });
+  assert.equal(await empty.locator("img").count(), 0);
+  await empty.click();
+  assert.equal(await page.getByRole("heading", { level: 1 }).textContent(), "Zcela prázdné album");
+  assert.ok(await page.getByText("0 fotek", { exact: true }).isVisible());
+  assert.ok(await page.getByText("Bez nahledu").isVisible());
+  await page.getByRole("link", { name: "Zpět" }).click();
+  assert.equal(page.url(), base + "/");
+
+  await page.goto(base + current);
+  assert.equal(await page.title(), "Tři barvy");
+  assert.equal(await page.getByRole("heading", { level: 1 }).textContent(), "Tři barvy");
+  const first = page.locator(".grid a").first();
+  assert.equal(await first.getAttribute("href"), "/originals/Zlut%C3%A1%203.jpg");
+  assert.equal(await first.locator("img").getAttribute("src"), cover);
+
+  await page.goto(base + previous);
+  assert.equal(await page.title(), "Minulý výlet");
+  assert.equal(await page.getByRole("heading", { level: 1 }).textContent(), "Minulý výlet");
+  const previousTiles = page.locator(".grid a");
+  assert.equal(await previousTiles.count(), 1);
+  assert.equal(await previousTiles.getAttribute("href"), "/originals/Azurov%C3%A1.jpg");
+  assert.equal(await previousTiles.locator("img").getAttribute("src"), previousCover);
+
+  for (const url of [
+    "/event?year=2031&name=v%C3%BDlet+%26+t%C5%99i",
+    "/event?year=2031&name=Neznama",
+    "/event?year=999&name=V%C3%BDlet+%26+t%C5%99i",
+  ]) {
+    await page.goto(base + url);
+    await page.waitForURL(base + "/");
+    assert.equal(await page.getByRole("heading", { level: 1 }).textContent(), "Pokuk");
+  }
+});
+
 test("share, browse, zoom, retry one photo and open a published original", async (t) => {
   const { start } = await gallery(t);
   const base = await start();
@@ -19,28 +95,11 @@ test("share, browse, zoom, retry one photo and open a published original", async
   page.setDefaultTimeout(10000);
 
   await page.goto(base);
-  assert.deepEqual(await page.getByRole("heading", { level: 2 }).allTextContents(), [
-    "2031",
-    "2030",
-  ]);
-  assert.deepEqual(await page.getByRole("heading", { level: 3 }).allTextContents(), [
-    "Tři barvy",
-    "Prázdné album",
-    "Minulý výlet",
-  ]);
-
-  const card = page.getByRole("link", { name: /Tři barvy/ });
-  const cover = await card.locator("img").getAttribute("src");
-  await page.getByRole("link", { name: /Bez nahledu.*Prázdné album.*0 fotek/ }).click();
-  assert.ok(await page.getByText("Bez nahledu").isVisible());
-  await page.getByRole("link", { name: "Zpět" }).click();
-
-  await card.click();
+  await page.getByRole("link", { name: /Tři barvy/ }).click();
   const shared = page.url();
   await page.goto(shared, { waitUntil: "networkidle" });
   assert.equal(await page.title(), "Tři barvy");
   const tiles = page.locator(".grid a");
-  assert.equal(await tiles.first().locator("img").getAttribute("src"), cover);
   const originals = await tiles.evaluateAll((links) =>
     links.map((link) => link.getAttribute("href")),
   );
@@ -75,9 +134,6 @@ test("share, browse, zoom, retry one photo and open a published original", async
   await page.waitForFunction(
     () => document.activeElement === document.querySelectorAll(".grid a")[1],
   );
-
-  await page.goto(shared.replace("2031", "2030"));
-  assert.equal(await page.title(), "Minulý výlet");
 
   const plain = await browser.newPage({ javaScriptEnabled: false });
   for (const [index, original] of originals.entries()) {

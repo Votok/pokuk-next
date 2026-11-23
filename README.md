@@ -55,3 +55,5 @@ Open an event directly, then advance the lightbox with the Network panel open. W
 3. Once React attaches the click handler, pressing an arrow changes the selected photo in browser state. The browser can request its screen preview. The event page does not render again.
 
 Disable JavaScript and predict the destination before clicking the second tile. The existing HTML anchor still works. [Next.js guide to Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+
+Copy the **Tři barvy** URL and try changing just the year to `2030`, then try changing the uppercase `V` in the `name` parameter to lowercase. Next.js gives the Server Component the decoded name `Výlet & tři` for the original URL. The catalog uses both the year and the exact name to decide which event to show or whether to redirect to the index.

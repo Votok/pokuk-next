@@ -36,10 +36,13 @@ export async function seed(dir) {
     path.join(dir, "catalog.json"),
     JSON.stringify({
       Years: [
-        { Year: 2030, GalleryEvents: [{ ...album, FriendlyName: "Minulý výlet" }] },
+        {
+          Year: 2030,
+          GalleryEvents: [{ ...album, FriendlyName: "Minulý výlet", Files: [files[1]] }],
+        },
         {
           Year: 2031,
-          GalleryEvents: [{ Name: "Álbum", FriendlyName: "Prázdné album", Files: [] }, album],
+          GalleryEvents: [{ Name: "Álbum", FriendlyName: "Zcela prázdné album", Files: [] }, album],
         },
       ],
     }),
