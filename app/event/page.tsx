@@ -9,9 +9,11 @@ async function lookup(props: PageProps<"/event">) {
   if (event === undefined) redirect("/");
   return event;
 }
+
 export async function generateMetadata(props: PageProps<"/event">) {
   return { title: (await lookup(props))?.title ?? "Pokuk" };
 }
+
 export default async function Event(props: PageProps<"/event">) {
   const event = await lookup(props);
   if (!event) {
@@ -21,6 +23,16 @@ export default async function Event(props: PageProps<"/event">) {
     }
     return <Unavailable href={"/event?" + query} />;
   }
-  return <><a href="/">Zpět</a><h1>{event.title}</h1><p>{event.photos.length} fotek</p>
-    {event.photos.length ? <Grid title={event.title} photos={event.photos} /> : <p>Bez nahledu</p>}</>;
+  return (
+    <>
+      <a href="/">Zpět</a>
+      <h1>{event.title}</h1>
+      <p>{event.photos.length} fotek</p>
+      {event.photos.length ? (
+        <Grid title={event.title} photos={event.photos} />
+      ) : (
+        <p>Bez nahledu</p>
+      )}
+    </>
+  );
 }
