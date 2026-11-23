@@ -2,16 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import path from "node:path";
 import { link, readFile, rename, writeFile } from "node:fs/promises";
-import { chromium } from "playwright-core";
-import { gallery } from "./gallery-server.mjs";
+import { browserFor, gallery } from "./gallery-server.mjs";
 
 const currentEvent = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
-
-async function browserFor(t) {
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
-  t.after(() => browser.close());
-  return browser;
-}
 
 test("visitors can retry the same index or event URL after a catalog outage", async (t) => {
   const { dir, start } = await gallery(t);
@@ -254,6 +247,7 @@ test("a phone loads nearby covers and tiles, reserves rows and opens an upright 
 
   await images.first().scrollIntoViewIfNeeded();
   await page.waitForLoadState("networkidle");
+  assert.ok(![...requests].some((url) => url.startsWith("/previews/screen/")));
   await images.first().tap();
   const portrait = page.locator("img[src*='/previews/screen/']").first();
   await portrait.evaluate((img) => img.decode());

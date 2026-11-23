@@ -1,9 +1,32 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { chromium } from "playwright-core";
 import { seed } from "../scripts/fixture.mjs";
+
+export async function browserFor(t) {
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+  t.after(() => browser.close());
+  return browser;
+}
+
+export async function serveLocally(t, handleRequest) {
+  const server = createServer(handleRequest);
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  t.after(() => {
+    server.close();
+    server.closeAllConnections();
+  });
+
+  return `http://127.0.0.1:${server.address().port}`;
+}
 
 export async function gallery(t) {
   const dir = await mkdtemp(path.join(tmpdir(), "pokuk-test-"));

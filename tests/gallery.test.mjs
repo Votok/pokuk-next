@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { rename } from "node:fs/promises";
-import { createServer } from "node:http";
 import path from "node:path";
 import sharp from "sharp";
-import { gallery } from "./gallery-server.mjs";
+import { browserFor, gallery, serveLocally } from "./gallery-server.mjs";
 
 const event = "/event?year=2031&name=V%C3%BDlet+%26+t%C5%99i";
 
@@ -27,7 +26,7 @@ test("the Blob reader checks its cached ETag on every page open", async (t) => {
     },
   ];
 
-  const blob = createServer((req, res) => {
+  const blobEndpoint = await serveLocally(t, (req, res) => {
     const condition = req.headers["if-none-match"];
     requests.push({
       method: req.method,
@@ -47,19 +46,10 @@ test("the Blob reader checks its cached ETag on every page open", async (t) => {
     }
   });
 
-  await new Promise((resolve, reject) => {
-    blob.once("error", reject);
-    blob.listen(0, "127.0.0.1", resolve);
-  });
-  t.after(() => {
-    blob.close();
-    blob.closeAllConnections();
-  });
-
   const base = await start({
     GALLERY_FIXTURE_DIR: "",
     AZURE_STORAGE_CONNECTION_STRING:
-      `BlobEndpoint=http://127.0.0.1:${blob.address().port}/testaccount;` +
+      `BlobEndpoint=${blobEndpoint}/testaccount;` +
       "AccountName=testaccount;SharedAccessSignature=sp=r&sig=invented-catalog-secret",
     GALLERY_CONTAINER: "gallery",
     GALLERY_CATALOG_BLOB: "published.json",
@@ -157,11 +147,37 @@ test("upright private-metadata-free previews survive replacement of the gallery 
     assert.equal(image.height, height);
     assert.ok(Math.abs(image.width / image.height - 1800 / 2800) < 0.002);
     assert.equal(image.exif, undefined);
+
+    // Check landmarks after the clockwise rotation, including opposite corners.
+    for (const [x, y, color] of [
+      [0.61, 0.3, [255, 237, 200]],
+      [0.1, 0.9, [35, 55, 63]],
+      [0.9, 0.1, [231, 179, 58]],
+    ]) {
+      const pixel = await sharp(data)
+        .extract({
+          left: Math.floor(image.width * x),
+          top: Math.floor(image.height * y),
+          width: 1,
+          height: 1,
+        })
+        .raw()
+        .toBuffer();
+      assert.ok(color.every((channel, i) => Math.abs(channel - pixel[i]) < 5));
+    }
+
     previews.set(url, data);
   }
 
   assert.deepEqual(await bytes(original), before);
   await rename(path.join(dir, "originals"), path.join(dir, "offline"));
   base = await start();
-  for (const [url, data] of previews) assert.deepEqual(await bytes(url), data);
+
+  const browser = await browserFor(t);
+  const page = await browser.newPage();
+  for (const [url, data] of previews) {
+    const response = await page.goto(base + url);
+    assert.equal(response.status(), 200);
+    assert.deepEqual(await response.body(), data);
+  }
 });

@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { createHash } from "node:crypto";
 import { publishedBlob } from "../../../../lib/preview-url";
-import { readOriginal, readPreview, writePreview } from "../../../../lib/storage";
+import { createPreviewIfAbsent, readOriginal, readPreview } from "../../../../lib/storage";
 
 export async function GET(_: Request, { params }: RouteContext<"/previews/[size]/[id]">) {
   const { size, id } = await params;
@@ -15,13 +15,16 @@ export async function GET(_: Request, { params }: RouteContext<"/previews/[size]
     let bytes = await readPreview(key);
     if (!bytes) {
       const edge = size === "small" ? 640 : 2560;
-      bytes = await sharp(await readOriginal(name))
+      const rendered = await sharp(await readOriginal(name))
         .autoOrient()
         .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 84 })
         .toBuffer();
-      await writePreview(key, bytes);
+
+      bytes = (await createPreviewIfAbsent(key, rendered)) ? rendered : await readPreview(key);
+      if (!bytes) throw new Error("Stored preview is unavailable");
     }
+
     return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": "image/jpeg",

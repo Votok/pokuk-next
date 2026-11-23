@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { readFile, mkdir, rename, writeFile } from "node:fs/promises";
+import { link, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { BlobServiceClient, RestError } from "@azure/storage-blob";
 
@@ -52,6 +52,11 @@ export function readOriginal(name: string) {
   return readFile(path.join(fixture, "originals", name));
 }
 
+function blobErrorCode(error: unknown) {
+  if (error instanceof RestError)
+    return error.response?.headers.get("x-ms-error-code") ?? error.code;
+}
+
 export async function readPreview(key: string) {
   try {
     return fixture
@@ -60,33 +65,42 @@ export async function readPreview(key: string) {
   } catch (error) {
     if (
       (error as NodeJS.ErrnoException).code === "ENOENT" ||
-      (error instanceof RestError && error.code === "BlobNotFound")
+      blobErrorCode(error) === "BlobNotFound"
     )
       return null;
     throw error;
   }
 }
 
-export async function writePreview(key: string, bytes: Buffer) {
+export async function createPreviewIfAbsent(key: string, bytes: Buffer) {
   if (fixture) {
     const folder = path.join(fixture, "previews");
     await mkdir(folder, { recursive: true });
     const temporary = path.join(folder, randomUUID());
-    await writeFile(temporary, bytes);
-    await rename(temporary, path.join(folder, key));
+
+    try {
+      await writeFile(temporary, bytes);
+      await link(temporary, path.join(folder, key));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+      throw error;
+    } finally {
+      await rm(temporary, { force: true });
+    }
   } else {
     const blob = container("GALLERY_PREVIEW_CONTAINER").getBlockBlobClient(key);
+
     try {
       await blob.uploadData(bytes, {
         conditions: { ifNoneMatch: "*" },
         blobHTTPHeaders: { blobContentType: "image/jpeg" },
       });
     } catch (error) {
-      if (!(
-        error instanceof RestError &&
-        ["BlobAlreadyExists", "ConditionNotMet"].includes(error.code ?? "")
-      ))
-        throw error;
+      if (["BlobAlreadyExists", "ConditionNotMet"].includes(blobErrorCode(error) ?? ""))
+        return false;
+      throw error;
     }
   }
+
+  return true;
 }
