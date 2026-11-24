@@ -2,9 +2,11 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { link, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ManagedIdentityCredential } from "@azure/identity";
 import { BlobServiceClient, RestError } from "@azure/storage-blob";
 
 export const fixture = process.env.GALLERY_FIXTURE_DIR;
+let blobServiceClient: BlobServiceClient | undefined;
 
 function required(name: string) {
   const value = process.env[name];
@@ -12,10 +14,15 @@ function required(name: string) {
   return value;
 }
 
-function container(name: string) {
-  return BlobServiceClient.fromConnectionString(
-    required("AZURE_STORAGE_CONNECTION_STRING"),
-  ).getContainerClient(required(name));
+function container(envName: string) {
+  if (!blobServiceClient) {
+    const accountUrl = process.env.GALLERY_STORAGE_ACCOUNT_URL;
+    blobServiceClient = accountUrl
+      ? new BlobServiceClient(accountUrl, new ManagedIdentityCredential())
+      : BlobServiceClient.fromConnectionString(required("AZURE_STORAGE_CONNECTION_STRING"));
+  }
+
+  return blobServiceClient.getContainerClient(required(envName));
 }
 
 export async function readRevision(previous?: string) {

@@ -53,7 +53,12 @@ export async function gallery(t) {
       process.execPath,
       ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "0"],
       {
-        env: { ...process.env, GALLERY_FIXTURE_DIR: dir, ...env },
+        env: {
+          ...process.env,
+          GALLERY_FIXTURE_DIR: dir,
+          GALLERY_STORAGE_ACCOUNT_URL: undefined,
+          ...env,
+        },
         stdio: ["ignore", "pipe", "ignore"],
       },
     );

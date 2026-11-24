@@ -38,3 +38,42 @@ On Container Apps, retain the previous working revision for rollback.
 The maintainer approved the hosting decision in
 [Choose the Azure host and production access boundaries](https://github.com/Votok/pokuk-next/issues/9#issuecomment-7086287050)
 and confirmed the [deployment handoff and rollback](https://github.com/Votok/pokuk-next/issues/9#issuecomment-7086346471).
+
+## First live deployment
+
+[Spec #25](https://github.com/Votok/pokuk-next/issues/25) approves
+Container Apps Consumption with zero minimum replicas for the first live
+Next.js revision, with App Service B1 serving visitors and available for the
+first rollback. The 48-hour exception applied to the invented-data trial.
+Before live provisioning, verify that the overlap and ongoing costs are
+covered by eligible credit and the subscription spending limit, with zero
+additional out-of-pocket spend. The maintainer deferred the cost and credit
+checks in [#26](https://github.com/Votok/pokuk-next/issues/26). The live
+deployment remains deferred until that evidence is available and the
+maintainer chooses the handoff time.
+
+1. At the agreed handoff time, confirm the budget evidence and the
+   [B1 rollback baseline](../azure-handoff-rollback.md) are current. Disconnect
+   the legacy deployment trigger before enabling automatic deployment from
+   `main`.
+2. Give the runtime identity read access to the published catalog and
+   preview source originals. Scope read and write access for cached previews
+   to the generated preview container. Configure the preview signing key as
+   a server-side secret. The uploader continues to publish the catalog and
+   originals.
+3. After the checks pass, use the authorized `main` deployment job to
+   publish the tested image and deploy it by digest. Scope its short-lived
+   GitHub OIDC access to the target app and required image publication.
+   Record the commit, image digest, revision and candidate endpoint.
+4. Run the [visitor check](../azure-handoff-rollback.md#repeat-the-visitor-check)
+   on the candidate revision endpoint with the live catalog. Keep B1 serving
+   the public URL while testing. Promote only after the candidate passes,
+   then repeat the check on the public URL and record the result. The public
+   endpoint recorded in the baseline is Azure-managed and bound to B1, so
+   the switch needs a routing plan that preserves that URL.
+5. If the public check fails, suspend promotion, restore B1 routing and
+   restore the saved build and matching configuration as needed. Verify
+   recovery at the public URL before resuming deploys. For subsequent
+   releases, retain the last working Container Apps revision and its
+   matching configuration. If recovery is needed, route back to it and
+   repeat the public check before resuming deploys.

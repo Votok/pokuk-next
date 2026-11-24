@@ -43,11 +43,19 @@ Leave `GALLERY_FIXTURE_DIR` unset for Blob Storage. Supply the following through
 
 | Variable | Purpose |
 | --- | --- |
-| AZURE_STORAGE_CONNECTION_STRING | Server-side storage connection |
+| GALLERY_STORAGE_ACCOUNT_URL | HTTPS Blob service URL for the account that holds the catalog, originals, and previews. When set, the server authenticates with its system-assigned managed identity. |
+| AZURE_STORAGE_CONNECTION_STRING | Server-side storage connection for deployments where `GALLERY_STORAGE_ACCOUNT_URL` is unset. |
 | GALLERY_CONTAINER | Existing container holding catalog and originals |
 | GALLERY_CATALOG_BLOB | Existing JSON blob name |
 | GALLERY_PREVIEW_CONTAINER | Separate, existing writable container for generated previews |
 | GALLERY_PREVIEW_SIGNING_KEY | Random server secret shared by all gallery instances. Keep it stable across restarts and storage credential rotation so open albums retain working preview links. |
+
+For managed identity, grant blob read access on `GALLERY_CONTAINER` and
+blob read and write access on `GALLERY_PREVIEW_CONTAINER`. Scope the
+grants to the individual containers. A gallery page uses these credentials
+on the server to read the catalog, and the preview route uses them to read
+the source blob and save resized images. The browser uses the original
+URL already stored in the catalog when a visitor selects **Originál**.
 
 The reader issues a conditional catalog download on each page open. A matching ETag allows reuse of parsed data. If the download exceeds 10 seconds, the page offers a retry. Original links retain their exact published spelling. Each preview URL carries a signed blob name so another instance can serve an open album during a catalog outage. On a preview miss the server reads the original by its published blob name, rotates and resizes it, strips metadata, then persists the JPEG. Only the preview container receives writes. Local fixture mode uses an isolated directory for the same operations.
 
