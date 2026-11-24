@@ -23,3 +23,61 @@ jobs:
       - run: npm run build
       - run: npx playwright-core install --with-deps chromium
       - run: npm test
+  deploy-development:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_DEVELOPMENT_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: azure-development
+    concurrency: azure-development
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP: ${{ vars.AZURE_DEVELOPMENT_APP }}
+      RESOURCE_GROUP: ${{ vars.AZURE_DEVELOPMENT_RESOURCE_GROUP }}
+      REGISTRY: ${{ vars.AZURE_DEVELOPMENT_REGISTRY }}
+      IMAGE: ${{ vars.AZURE_DEVELOPMENT_REGISTRY_SERVER }}/gallery
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          build-args: REVISION=${{ github.sha }}
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          load: true
+      - run: bash scripts/check-development-image.sh "$IMAGE:$GITHUB_SHA"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEVELOPMENT_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_DEVELOPMENT_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_DEVELOPMENT_SUBSCRIPTION_ID }}
+      - name: Publish and deploy the checked image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$IMAGE:$GITHUB_SHA"
+          az acr login --name "$REGISTRY" --resource-group "$RESOURCE_GROUP" --only-show-errors
+          docker push "$tag"
+          image_ref=$(docker image inspect "$tag" --format '{{index .RepoDigests 0}}')
+          [[ "$image_ref" == "$IMAGE@sha256:"* ]]
+          head_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$GITHUB_SHA" != "$head_sha" ]]; then
+            printf 'Skipped deployment because `%s` is no longer the tip of `main`.\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          revision=$(az containerapp update --name "$APP" --resource-group "$RESOURCE_GROUP" \
+            --image "$image_ref" --min-replicas 0 \
+            --revision-suffix "g${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --query properties.latestRevisionName --output tsv --only-show-errors)
+          endpoint=$(az containerapp revision show --name "$APP" --resource-group "$RESOURCE_GROUP" \
+            --revision "$revision" --query properties.fqdn --output tsv --only-show-errors)
+          {
+            printf 'Commit `%s`\n\n' "$GITHUB_SHA"
+            printf 'Image `%s`\n\n' "$image_ref"
+            printf 'Revision `%s` at https://%s\n' "$revision" "$endpoint"
+          } >> "$GITHUB_STEP_SUMMARY"

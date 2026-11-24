@@ -61,3 +61,36 @@ revision-specific endpoint for `pokuk-smoke--bba6beb-v2`.
 
 The first revision-specific attempt timed out waiting for the lightbox.
 The repeat passed all steps after the event page finished loading.
+
+## Development deployment from main
+
+[Ticket #28](https://github.com/Votok/pokuk-next/issues/28) uses this
+isolated app and invented catalog to study deployment. The maintainer
+confirmed that the available Azure credit covers the exercise. The app
+scales to zero, serves fixture images and previews, and uses its system
+identity for Blob access. B1 continues serving the public gallery.
+
+The Gallery workflow checks each push to `main` before building the Linux
+image. It runs the packaged image against an invented catalog before
+publishing, deploys the tested digest, and reports the commit, image,
+revision and endpoint in the run summary. Pull requests run the existing
+checks with no Azure credentials.
+
+To enable development deployment, configure the GitHub environment
+`azure-development` to allow deployments from `main` only. Create a
+dedicated Azure deployment identity with a federated credential for
+`repo:Votok/pokuk-next:environment:azure-development`. Grant that identity
+Container Apps Contributor at the development app and AcrPush at the
+development registry. Set the environment variables
+`AZURE_DEVELOPMENT_CLIENT_ID`, `AZURE_DEVELOPMENT_TENANT_ID`,
+`AZURE_DEVELOPMENT_SUBSCRIPTION_ID`, `AZURE_DEVELOPMENT_APP`,
+`AZURE_DEVELOPMENT_RESOURCE_GROUP`, `AZURE_DEVELOPMENT_REGISTRY`, and
+`AZURE_DEVELOPMENT_REGISTRY_SERVER`. The app and registry share a resource
+group. Set the repository Actions variable
+`AZURE_DEVELOPMENT_DEPLOY_ENABLED` to `true` to enable the job.
+
+The deployment identity publishes the image and updates the app. The
+registry pull identity obtains that image for Container Apps. The running
+Next.js server uses a separate system identity to check the catalog on each
+page open and generate previews on request. The preview signing key stays
+in a Container Apps secret.
