@@ -44,18 +44,18 @@ and confirmed the [deployment handoff and rollback](https://github.com/Votok/pok
 [Spec #25](https://github.com/Votok/pokuk-next/issues/25) approves
 Container Apps Consumption with zero minimum replicas for the first live
 Next.js revision, with App Service B1 serving visitors and available for the
-first rollback. The 48-hour exception applied to the invented-data trial.
-Before live provisioning, verify that the overlap and ongoing costs are
-covered by eligible credit and the subscription spending limit, with zero
-additional out-of-pocket spend. The maintainer deferred the cost and credit
-checks in [#26](https://github.com/Votok/pokuk-next/issues/26). The live
-deployment remains deferred until that evidence is available and the
-maintainer chooses the handoff time.
+first rollback. The maintainer approved using the live Container App's stable,
+Azure-generated HTTPS URL as the new bookmark. The legacy Azure-managed URL
+continues to serve B1 during the handoff. The 48-hour exception applied to the
+invented-data trial.
+Eligible credit and the subscription spending limit must cover both the
+overlap and ongoing costs with zero additional out-of-pocket spend. The
+maintainer deferred the cost and credit checks in
+[#26](https://github.com/Votok/pokuk-next/issues/26).
 
-1. At the agreed handoff time, confirm the budget evidence and the
-   [B1 rollback baseline](../azure-handoff-rollback.md) are current. Disconnect
-   the legacy deployment trigger before enabling automatic deployment from
-   `main`.
+1. Before provisioning the live candidate, confirm access to the personal
+   subscription and verify that the budget evidence and the
+   [B1 rollback baseline](../azure-handoff-rollback.md) are current.
 2. Give the runtime identity read access to the published catalog and
    preview source originals. Scope read and write access for cached previews
    to the generated preview container. Configure the preview signing key as
@@ -66,14 +66,15 @@ maintainer chooses the handoff time.
    GitHub OIDC access to the target app and required image publication.
    Record the commit, image digest, revision and candidate endpoint.
 4. Run the [visitor check](../azure-handoff-rollback.md#repeat-the-visitor-check)
-   on the candidate revision endpoint with the live catalog. Keep B1 serving
-   the public URL while testing. Promote only after the candidate passes,
-   then repeat the check on the public URL and record the result. The public
-   endpoint recorded in the baseline is Azure-managed and bound to B1, so
-   the switch needs a routing plan that preserves that URL.
-5. If the public check fails, suspend promotion, restore B1 routing and
-   restore the saved build and matching configuration as needed. Verify
-   recovery at the public URL before resuming deploys. For subsequent
-   releases, retain the last working Container Apps revision and its
-   matching configuration. If recovery is needed, route back to it and
-   repeat the public check before resuming deploys.
+   on the candidate revision endpoint with the live catalog while B1 serves
+   the legacy URL. After the candidate passes, get the maintainer's
+   confirmation of the handoff window. At handoff, disconnect the legacy
+   deployment trigger before enabling automatic live deployment from `main`.
+   Promote the passing revision to the stable Container Apps URL, then repeat
+   the visitor check there and record the result.
+5. If the first check at the stable URL fails, suspend promotion, fall back
+   to the legacy B1 URL, and restore the saved build and matching configuration
+   if needed. Verify recovery at the B1 URL before resuming deployments. For
+   subsequent releases, retain the last working Container Apps revision and its
+   matching configuration. If recovery is needed, route the stable Container
+   Apps URL back to it and repeat the visitor check before resuming deployments.
