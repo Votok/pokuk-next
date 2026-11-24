@@ -120,8 +120,9 @@ originals in `pokukcontainer` and can write only to the private
    fallback still serves the recorded gallery. In App Service Deployment
    Center, disconnect Local Git before enabling automatic live deployment.
 2. In the live app's Revision management page, direct 100% of traffic
-   to the verified candidate by revision name. Run the browser check
-   against the stable endpoint and record the revision and result.
+   to the verified candidate by revision name. Confirm the assigned
+   traffic in Azure, run the browser check against the stable endpoint,
+   and record the revision and result in this runbook.
 
    ```sh
    node scripts/check-live-gallery.mjs https://pokuk-gallery.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/
@@ -155,16 +156,21 @@ After the first stable check passes, set the repository Actions variable
 `AZURE_LIVE_DEPLOY_ENABLED` to `true`. Passing builds on `main` deploy
 an image checked with invented data and pinned by digest. The job copies
 the working revision's configuration, verifies the new revision directly,
-then pins stable traffic to it and repeats the check. If the stable check
-fails, the job restores and verifies the previous revision. Inspect the
-GitHub Actions run summary for the commit, digest, revision and results.
+then pins stable traffic to it and repeats the check. Each new build
+identifies its serving revision in the gallery's index markup. If
+promotion fails, the job attempts to restore and verify the previous
+revision. Inspect the GitHub Actions run summary for the commit, digest,
+revision and results. Follow the manual recovery steps if the runner
+stops before it can verify recovery.
 
 ## Recover a subsequent release
 
-1. Set `AZURE_LIVE_DEPLOY_ENABLED` to `false` and let any in-flight
-   live deployment finish before changing traffic. Find the last verified
-   revision in the Gallery workflow summary. Keep that revision and its
-   image available. Keep the matching app-level secret references and
+1. Set `AZURE_LIVE_DEPLOY_ENABLED` to `false`, cancel queued live
+   deployments, and let any running live deployment finish before
+   changing traffic. Find the last verified
+   revision in the Gallery workflow summary or in the first promotion
+   record above. Keep that revision and its image available.
+   Keep the matching app-level secret references and
    values available as well. Use a new secret name for future rotations
    so the older revision can still use its original value.
 2. Activate the verified revision if necessary and route traffic to it.

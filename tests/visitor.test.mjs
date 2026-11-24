@@ -126,12 +126,16 @@ test("browse years, open empty events and resolve exact shared event URLs", asyn
 
 test("share, browse, zoom, retry one photo and open a published original", async (t) => {
   const { dir, start } = await gallery(t);
-  const base = await start();
+  const base = await start({ CONTAINER_APP_REVISION: "pokuk-gallery--fixture" });
   const browser = await browserFor(t);
   const page = await browser.newPage();
   page.setDefaultTimeout(10000);
 
   await page.goto(base);
+  assert.equal(
+    await page.getByRole("main").getAttribute("data-gallery-revision"),
+    "pokuk-gallery--fixture",
+  );
   await page.getByRole("link", { name: /Tři barvy/ }).click();
   const shared = page.url();
   await page.goto(shared, { waitUntil: "networkidle" });

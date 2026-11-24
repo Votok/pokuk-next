@@ -4,6 +4,7 @@ import { chromium } from "playwright-core";
 import sharp from "sharp";
 
 const endpoint = new URL(process.argv[2]);
+const expectedRevision = process.argv[3];
 const catalog = "https://pokukstorage.blob.core.windows.net/pokukcontainer/_gallery.json";
 const eventTitle = "Guatemala";
 const year = 2025;
@@ -41,6 +42,15 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   page.setDefaultTimeout(60_000);
   assert.ok((await page.goto(endpoint.href)).ok());
+  if (expectedRevision) {
+    step = "verify the serving revision";
+    assert.equal(
+      await page.getByRole("main").getAttribute("data-gallery-revision"),
+      expectedRevision,
+    );
+  }
+
+  step = "open the event from the index";
   const section = page.locator("section").filter({
     has: page.getByRole("heading", { name: String(year), exact: true }),
   });
