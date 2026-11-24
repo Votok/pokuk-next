@@ -41,7 +41,23 @@ Incremental trial charges were estimated at US$2.34. The estimate with
 the B1 compute overlap was US$5.94, plus continuing production storage
 and transfer. The live gallery was left on B1.
 
-Use the same endpoint, revision, and fixture for
-[the screen preview and original check](https://github.com/Votok/pokuk-next/issues/24).
-The full visitor smoke test remains open under
-[spec #22](https://github.com/Votok/pokuk-next/issues/22).
+## Open the screen preview and published original
+
+The full visitor journey in [ticket #24](https://github.com/Votok/pokuk-next/issues/24)
+and [spec #22](https://github.com/Votok/pokuk-next/issues/22) passed on
+November 24, 2026. Chromium used the app endpoint and invented fixture from
+#23 on the build recorded above. The journey also passed at the
+revision-specific endpoint for `pokuk-smoke--bba6beb-v2`.
+
+1. Opened **Tři barvy** from the index and verified its heading and one
+   411 × 640 photo tile matching the invented photo.
+2. Selected the tile and verified that the lightbox displayed the matching
+   1646 × 2560 screen preview.
+3. Followed **Originál** and verified that the browser opened the exact
+   original URL from the fixture catalog. The HTTP response contained the
+   same JPEG bytes as the fixture original. Chromium reported natural
+   dimensions of 1800 × 2800, matching the fixture dimensions after EXIF
+   orientation.
+
+The first revision-specific attempt timed out waiting for the lightbox.
+The repeat passed all steps after the event page finished loading.
