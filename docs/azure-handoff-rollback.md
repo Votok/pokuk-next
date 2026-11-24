@@ -45,9 +45,9 @@ The Windows App Service `pokuk` is in resource group `RgWestEuropePokuk2`
 in the personal subscription. Kudu reports active deployment
 `724206121acd2863c25a49337537b09de6494954`, completed June 15, 2026 at
 12:17 UTC. It matches the legacy repository's `master` commit. App Service
-reports Local Git as the deployment source. The maintainer confirmed the
-legacy checkout's `azure` remote is the deployment path. The app runs
-.NET 8 on a 64-bit worker with Always On disabled and no startup command
+reported Local Git as the deployment source before handoff. The maintainer
+confirmed the legacy checkout's `azure` remote was the deployment path.
+The app runs .NET 8 on a 64-bit worker with Always On disabled and no startup command
 override. App Service lists `WEBSITE_NODE_DEFAULT_VERSION` as the only app
 setting, no connection strings, and no managed identity. The legacy app
 reads its catalog and storage connection from `appsettings.json`.
@@ -105,7 +105,7 @@ B1 served `https://pokuk.azurewebsites.net/`.
 | Tested image | `pokuktrial8daf1d89.azurecr.io/gallery@sha256:89e1a5c1885af3091bc02d6ed6a71e4989c3eb10f56ba7102a55d27cff31b8a8` |
 | Revision | [`pokuk-gallery--live-929142d`](https://pokuk-gallery--live-929142d.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/) |
 | Journey | Chromium opened **Guatemala** for 2025 from the index. The matching tile measured 640 × 427 and the screen preview measured 1400 × 933. **Originál** opened the exact catalog URL and the JPEG matched the recorded SHA-256. |
-| Routing | The stable Container Apps hostname routed 100% to `pokuk-gallery--pending`, which has no live catalog configuration. |
+| Routing before promotion | The stable Container Apps hostname routed 100% to `pokuk-gallery--pending`, which has no live catalog configuration. |
 
 The app is `pokuk-gallery` in `pokuk-smoke-8daf1d89`. It reuses the
 Consumption environment and image registry from the fixture exercise,
@@ -133,6 +133,22 @@ originals in `pokukcontainer` and can write only to the private
    route the stable endpoint back to `pokuk-gallery--pending`, and use the
    legacy B1 bookmark. Repair B1 from the saved baseline if needed and
    record the visitor check at the B1 URL before resuming deployment.
+
+### First promotion record
+
+On November 24, 2026 at 16:31 CET, Azure confirmed that the
+[stable gallery URL](https://pokuk-gallery.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/)
+routed 100% of traffic to `pokuk-gallery--live-929142d`. The stable URL
+passed the browser check and became the new bookmark. Chromium opened
+**Guatemala** for 2025, verified the 640 × 427 tile and 1400 × 933 screen
+preview, and followed **Originál** to the exact catalog URL. The JPEG
+matched the recorded SHA-256.
+
+Before changing traffic, the B1 fallback passed the browser check and the
+saved build ZIP matched the recorded checksum. App Service then reported
+SCM type `None`, and the B1 index returned HTTP 200 after the Local Git
+disconnect. The [B1 URL](https://pokuk.azurewebsites.net/) remains the
+initial fallback.
 
 ## Automatic live deployment
 
@@ -183,10 +199,20 @@ stops before it can verify recovery.
      --name pokuk-gallery --revision-weight "$verified_revision=100"
    ```
 
-3. Repeat the browser check on the stable URL and record the revision,
-   endpoint and result. Set `AZURE_LIVE_DEPLOY_ENABLED` to `true` after
-   recovery is verified. Keep at least the current and previous verified
-   revisions when deactivating superseded revisions.
+3. Confirm Azure shows 100% of traffic pinned to the recovered revision.
+   Run the browser check on the stable URL with the expected serving
+   revision, then record the revision, endpoint and result.
+
+   ```sh
+   node scripts/check-live-gallery.mjs https://pokuk-gallery.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/ "$verified_revision"
+   ```
+
+   If recovering to `pokuk-gallery--live-929142d`, run the command without
+   the revision argument. That build predates the response marker, so use
+   Azure's traffic assignment to verify the route. Set
+   `AZURE_LIVE_DEPLOY_ENABLED` to `true` after recovery is verified. Keep at
+   least the current and previous verified revisions when deactivating
+   superseded revisions.
 
 Azure stores the container image, environment variables and scaling
 settings per revision. Ingress routing and secret values belong to the
