@@ -4,6 +4,27 @@ This record supports [ticket #27](https://github.com/Votok/pokuk-next/issues/27)
 The public browser check passed. The B1 build and matching configuration
 were verified by reconstructing the deployment package offline.
 
+## Live gallery status
+
+On November 24, 2026, the first automatic live deployment from `main`
+passed the candidate and stable visitor checks. Azure confirmed 100% of
+traffic at the [stable Azure-generated URL](https://pokuk-gallery.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/)
+was pinned to `pokuk-gallery--g11-1`. An independent browser check
+confirmed the serving revision and the Guatemala photo journey.
+
+| Item | Evidence |
+| --- | --- |
+| Workflow | [Gallery run 45428398457](https://github.com/Votok/pokuk-next/actions/runs/45428398457), commit `99303eb` |
+| Deployed image | `pokuktrial8daf1d89.azurecr.io/gallery-live@sha256:605abbdf91fb9a26892c30e8481c63cee846b11e88de3bc831e3ca005a19053b` |
+| Automatic deployment | `azure-live` allows `main` only and `AZURE_LIVE_DEPLOY_ENABLED` is `true` |
+| Recovery | `pokuk-gallery--live-929142d` is available for revision rollback. The [legacy B1 URL](https://pokuk.azurewebsites.net/) remains the initial fallback. |
+| Handoff tickets | [#25](https://github.com/Votok/pokuk-next/issues/25) and [#29](https://github.com/Votok/pokuk-next/issues/29) are closed |
+
+Azure lists no custom hostname on the live app. Public DNS returned
+`NXDOMAIN` for `pokuk.eu` and `www.pokuk.eu` during this check. A shorter
+HTTPS bookmark requires control of the chosen domain's DNS and a
+[custom domain binding on Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/custom-domains-managed-certificates).
+
 ## Public check on November 24, 2026
 
 | Item | Evidence |
