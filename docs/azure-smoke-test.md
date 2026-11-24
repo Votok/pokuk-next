@@ -78,8 +78,10 @@ checks with no Azure credentials.
 
 To enable development deployment, configure the GitHub environment
 `azure-development` to allow deployments from `main` only. Create a
-dedicated Azure deployment identity with a federated credential for
-`repo:Votok/pokuk-next:environment:azure-development`. Grant that identity
+dedicated Azure deployment identity with a federated credential for the
+immutable GitHub subject
+`repo:Votok@29477848/pokuk-next@1467642720:environment:azure-development`.
+Grant that identity
 Container Apps Contributor at the development app and AcrPush plus Reader
 at the development registry. Set the environment secrets
 `AZURE_DEVELOPMENT_CLIENT_ID`, `AZURE_DEVELOPMENT_TENANT_ID`,
