@@ -56,8 +56,8 @@ The app requires HTTPS and lists `pokuk.azurewebsites.net`, `pokuk.eu`,
 and `www.pokuk.eu` as visitor hostnames. The two custom names did not
 resolve during verification and have no enabled App Service TLS binding.
 The verified visitor endpoint is `https://pokuk.azurewebsites.net/`, an
-Azure-managed hostname bound to B1. Any later public cutover needs a routing
-plan that accounts for this binding.
+Azure-managed hostname bound to B1. It remains the initial fallback when
+the Container Apps hostname becomes the new bookmark.
 
 ## Recovery files
 
@@ -90,7 +90,100 @@ Recovery was verified offline.
    [App Service ZIP deployment](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip),
    with build automation disabled. Remove the temporary directory and
    assembled ZIP after use. Verify that B1 serves the recorded build.
-3. Restore any public routing changed during handoff to the recorded B1
-   endpoint and verify its HTTPS binding.
-4. Repeat the visitor check at the public URL. Record the endpoint, restored
-   build and result before resuming deployments.
+3. Verify the HTTPS binding on `https://pokuk.azurewebsites.net/` and
+   repeat the visitor check there. Record the endpoint, build and result
+   before resuming deployments.
+
+## First live Container Apps candidate
+
+The live candidate passed the visitor check on November 24, 2026 while
+B1 served `https://pokuk.azurewebsites.net/`.
+
+| Item | Evidence |
+| --- | --- |
+| Commit | `929142d3c9657c4c5ff8a10c409282e13bf31191` from [passing Gallery CI](https://github.com/Votok/pokuk-next/actions/runs/45393583710) |
+| Tested image | `pokuktrial8daf1d89.azurecr.io/gallery@sha256:89e1a5c1885af3091bc02d6ed6a71e4989c3eb10f56ba7102a55d27cff31b8a8` |
+| Revision | [`pokuk-gallery--live-929142d`](https://pokuk-gallery--live-929142d.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/) |
+| Journey | Chromium opened **Guatemala** for 2025 from the index. The matching tile measured 640 × 427 and the screen preview measured 1400 × 933. **Originál** opened the exact catalog URL and the JPEG matched the recorded SHA-256. |
+| Routing | The stable Container Apps hostname routed 100% to `pokuk-gallery--pending`, which has no live catalog configuration. |
+
+The app is `pokuk-gallery` in `pokuk-smoke-8daf1d89`. It reuses the
+Consumption environment and image registry from the fixture exercise,
+with zero minimum replicas. Its system identity reads the catalog and
+originals in `pokukcontainer` and can write only to the private
+`pokuk-previews` container. The revision references the app secret
+`preview-signing-v1`. Keep its value in Azure.
+
+## First promotion
+
+1. Confirm the handoff window with the maintainer. Verify that the B1
+   fallback still serves the recorded gallery. In App Service Deployment
+   Center, disconnect Local Git before enabling automatic live deployment.
+2. In the live app's Revision management page, direct 100% of traffic
+   to the verified candidate by revision name. Run the browser check
+   against the stable endpoint and record the revision and result.
+
+   ```sh
+   node scripts/check-live-gallery.mjs https://pokuk-gallery.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/
+   ```
+
+3. On success, adopt that stable URL as the new bookmark and enable the
+   live deployment job. If the check fails, keep the live job disabled,
+   route the stable endpoint back to `pokuk-gallery--pending`, and use the
+   legacy B1 bookmark. Repair B1 from the saved baseline if needed and
+   record the visitor check at the B1 URL before resuming deployment.
+
+## Automatic live deployment
+
+Configure the GitHub environment `azure-live` to allow deployments only
+from `main`. The Azure identity `gallery-github-live` federates with
+`repo:Votok@29477848/pokuk-next@1467642720:environment:azure-live`.
+It needs Container Apps Contributor on the live app and AcrPush plus
+Reader on the registry.
+
+| GitHub environment setting | Value |
+| --- | --- |
+| Secret `AZURE_LIVE_CLIENT_ID` | Client ID of `gallery-github-live` |
+| Secret `AZURE_LIVE_TENANT_ID` | Personal Azure tenant ID |
+| Secret `AZURE_LIVE_SUBSCRIPTION_ID` | Personal Azure subscription ID |
+| Variable `AZURE_LIVE_APP` | `pokuk-gallery` |
+| Variable `AZURE_LIVE_RESOURCE_GROUP` | `pokuk-smoke-8daf1d89` |
+| Variable `AZURE_LIVE_REGISTRY` | `pokuktrial8daf1d89` |
+| Variable `AZURE_LIVE_REGISTRY_SERVER` | `pokuktrial8daf1d89.azurecr.io` |
+
+After the first stable check passes, set the repository Actions variable
+`AZURE_LIVE_DEPLOY_ENABLED` to `true`. Passing builds on `main` deploy
+an image checked with invented data and pinned by digest. The job copies
+the working revision's configuration, verifies the new revision directly,
+then pins stable traffic to it and repeats the check. If the stable check
+fails, the job restores and verifies the previous revision. Inspect the
+GitHub Actions run summary for the commit, digest, revision and results.
+
+## Recover a subsequent release
+
+1. Set `AZURE_LIVE_DEPLOY_ENABLED` to `false` and let any in-flight
+   live deployment finish before changing traffic. Find the last verified
+   revision in the Gallery workflow summary. Keep that revision and its
+   image available. Keep the matching app-level secret references and
+   values available as well. Use a new secret name for future rotations
+   so the older revision can still use its original value.
+2. Activate the verified revision if necessary and route traffic to it.
+   Use its exact revision name to pin routing across further deployments.
+
+   ```sh
+   az containerapp revision activate --resource-group pokuk-smoke-8daf1d89 \
+     --name pokuk-gallery --revision "$verified_revision"
+   az containerapp ingress traffic set --resource-group pokuk-smoke-8daf1d89 \
+     --name pokuk-gallery --revision-weight "$verified_revision=100"
+   ```
+
+3. Repeat the browser check on the stable URL and record the revision,
+   endpoint and result. Set `AZURE_LIVE_DEPLOY_ENABLED` to `true` after
+   recovery is verified. Keep at least the current and previous verified
+   revisions when deactivating superseded revisions.
+
+Azure stores the container image, environment variables and scaling
+settings per revision. Ingress routing and secret values belong to the
+app. This lets a rollback restore the previous container configuration
+and route traffic back to it using the same bookmark.
+[Microsoft's revision documentation](https://learn.microsoft.com/en-us/azure/container-apps/revisions)

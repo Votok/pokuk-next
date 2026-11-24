@@ -48,23 +48,23 @@ first rollback. The maintainer approved using the live Container App's stable,
 Azure-generated HTTPS URL as the new bookmark. The legacy Azure-managed URL
 continues to serve B1 during the handoff. The 48-hour exception applied to the
 invented-data trial.
-Eligible credit and the subscription spending limit must cover both the
-overlap and ongoing costs with zero additional out-of-pocket spend. The
-maintainer deferred the cost and credit checks in
-[#26](https://github.com/Votok/pokuk-next/issues/26).
+The maintainer assumes the personal subscription's recurring Azure credit
+covers the overlap and ongoing use. The maintainer deferred separate cost
+and credit verification in [#26](https://github.com/Votok/pokuk-next/issues/26).
 
 1. Before provisioning the live candidate, confirm access to the personal
-   subscription and verify that the budget evidence and the
-   [B1 rollback baseline](../azure-handoff-rollback.md) are current.
+   subscription and verify that the
+   [B1 rollback baseline](../azure-handoff-rollback.md) is current.
 2. Give the runtime identity read access to the published catalog and
    preview source originals. Scope read and write access for cached previews
    to the generated preview container. Configure the preview signing key as
    a server-side secret. The uploader continues to publish the catalog and
    originals.
-3. After the checks pass, use the authorized `main` deployment job to
-   publish the tested image and deploy it by digest. Scope its short-lived
-   GitHub OIDC access to the target app and required image publication.
-   Record the commit, image digest, revision and candidate endpoint.
+3. Use the already checked and published `main` image by digest for the
+   first candidate. After handoff, publish and deploy subsequent passing
+   builds through the authorized `main` job. Scope its short-lived GitHub
+   OIDC access to the target app and required image publication. Record
+   the commit, image digest, revision and candidate endpoint.
 4. Run the [visitor check](../azure-handoff-rollback.md#repeat-the-visitor-check)
    on the candidate revision endpoint with the live catalog while B1 serves
    the legacy URL. After the candidate passes, get the maintainer's
