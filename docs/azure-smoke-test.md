@@ -94,3 +94,24 @@ registry pull identity obtains that image for Container Apps. The running
 Next.js server uses a separate system identity to check the catalog on each
 page open and generate previews on request. The preview signing key stays
 in a Container Apps secret.
+
+### Development revision verified on November 24, 2026
+
+- Local `main` commit `3f7b1d389c07d14bf985f16bd9673521974ade3c` passed
+  lint, formatting, strict type checks, the build and all seven tests.
+  The Linux image rendered the deployment fixture locally before publication.
+- The registry and Azure revision both reported image digest
+  `sha256:cff7983a660766628e2614d1a4b04c1b36041ad95eee71a568a37168c1a1a2c4`.
+- [Revision `pokuk-smoke--dev-3f7b1d3`](https://pokuk-smoke--dev-3f7b1d3.agreeablebush-fe2aa1f3.westeurope.azurecontainerapps.io/)
+  was healthy with zero minimum replicas. This was a manual deployment
+  using the checked image.
+- Chromium opened **Tři barvy** from the revision's index. The matching
+  tile and screen preview measured 411 × 640 and 1646 × 2560. Following
+  **Originál** opened the exact catalog URL and returned bytes identical
+  to the 1800 × 2800 fixture original after orientation.
+- The private preview container held zero blobs before the check and two
+  after it. The running revision used its system identity to read the
+  fixture sources and write those previews. Azure supplied the signing
+  key from the existing Container Apps secret.
+
+Publishing and verifying the GitHub Actions OIDC deployment is pending.
