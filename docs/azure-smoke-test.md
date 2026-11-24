@@ -80,8 +80,8 @@ To enable development deployment, configure the GitHub environment
 `azure-development` to allow deployments from `main` only. Create a
 dedicated Azure deployment identity with a federated credential for
 `repo:Votok/pokuk-next:environment:azure-development`. Grant that identity
-Container Apps Contributor at the development app and AcrPush at the
-development registry. Set the environment variables
+Container Apps Contributor at the development app and AcrPush plus Reader
+at the development registry. Set the environment variables
 `AZURE_DEVELOPMENT_CLIENT_ID`, `AZURE_DEVELOPMENT_TENANT_ID`,
 `AZURE_DEVELOPMENT_SUBSCRIPTION_ID`, `AZURE_DEVELOPMENT_APP`,
 `AZURE_DEVELOPMENT_RESOURCE_GROUP`, `AZURE_DEVELOPMENT_REGISTRY`, and
@@ -114,4 +114,5 @@ in a Container Apps secret.
   fixture sources and write those previews. Azure supplied the signing
   key from the existing Container Apps secret.
 
-Publishing and verifying the GitHub Actions OIDC deployment is pending.
+The [Gallery workflow runs](https://github.com/Votok/pokuk-next/actions/workflows/gallery.yml)
+record the commit, image digest and revision for automatic deployments.
