@@ -12,12 +12,12 @@ still need to be captured from the personal Azure subscription.
 | Endpoint | [Public gallery](https://pokuk.azurewebsites.net/) returned HTTP 200 over HTTPS |
 | Event | The index linked to [Guatemala (2025)](https://pokuk.azurewebsites.net/Home/Detail/2025Guatemala). The event response had the heading **Guatemala** and 50 tiles |
 | Selected photo | `2025_Guatemala_0Z3A1428.jpg`, first tile at verification. Its direct link returned HTTP 200 and a 1400 × 933 JPEG. SHA-256 `388bfa21aa44822efd6653ba98057399ca95a86aa9842cb6a011e3f841481ae0` |
-| Build | Legacy ASP.NET gallery. The active Kudu deployment ID and source commit are unverified |
+| Build | Legacy ASP.NET gallery. The active Kudu deployment ID is recorded below |
 | Result | Partial. PhotoSwipe initialization and the direct photo link were present in the delivered HTML. Browser rendering, the open lightbox, and independent comparison with the catalog's exact URL remain unverified |
 
 The legacy page links each tile directly to its original and uses the same
 image in PhotoSwipe. The delivered markup and legacy view contain no
-**Originál** action. To exercise an equivalent legacy path, open the image
+**Originál** action. For the maintainer-approved legacy check, open the image
 in PhotoSwipe, then open the same tile's direct link in a new tab using
 the browser context menu. Record this as a direct-link check. The
 **Originál** action in the Next.js gallery can be checked as written in
@@ -40,7 +40,20 @@ the spec.
    verified. Keep the catalog URL and any credentials in their authorized
    stores when they contain secrets.
 
-## Capture the B1 recovery baseline before handoff
+## B1 recovery baseline
+
+The separate personal Azure CLI profile can read the running App Service.
+Kudu reports active deployment `724206121acd2863c25a49337537b09de6494954`,
+completed June 15, 2026 at 12:17 UTC. The source commit and restorable
+artifact still need verification. App Service reports .NET 8, a 64-bit
+worker, and Always On disabled.
+
+The app requires HTTPS and lists `pokuk.azurewebsites.net`, `pokuk.eu`,
+and `www.pokuk.eu` as visitor hostnames. The two custom names did not
+resolve during verification and have no enabled App Service TLS binding.
+The verified visitor endpoint is `https://pokuk.azurewebsites.net/`.
+
+## Finish capturing the baseline before handoff
 
 - In the personal subscription, use App Service Deployment Center and
   [Kudu deployment history](https://learn.microsoft.com/en-us/azure/app-service-web/web-sites-nodejs-debug#inspect-deployed-files-using-kudu)
@@ -58,9 +71,7 @@ the spec.
   binding. The tested endpoint is an Azure-managed App Service hostname.
   Confirm the actual visitor URL and routing controls in Azure before
   planning a switch.
-- Store the recovery record alongside the dated visitor result. The current
-  CLI session exposed an enterprise subscription only, so the active B1
-  deployment, configuration and routing controls could not be captured.
+- Store the recovery record alongside the dated visitor result.
 
 ## Restore and verify
 
