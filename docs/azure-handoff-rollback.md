@@ -68,22 +68,22 @@ The folder and files are owner-only. `build.zip` was taken from the active
 read back with SHA-256
 `407d140aef2689426e770dbf609c9c4c47aab3767631570c95661dbfaff0bb8e`.
 
-`restore.json` records the existing private settings file and the deployed
-`LocalGalleryDirectory` override. The credentials remain in the legacy
-checkout's ignored `appsettings.json`. During capture, the private file
-with the override matched the complete deployed production JSON in memory.
-The development settings matched the pinned source byte for byte. The
-reconstructed package accounted for all 77 Kudu ZIP entries, and each
-retained archive entry matched its deployed bytes. The live app was used
-for the visitor check. Recovery was verified offline.
+`restore.json` records the macOS Keychain item for the exact deployed
+`appsettings.json`, named `Pokuk B1 rollback` followed by the deployment
+ID, with account `appsettings.json`. The item was read back and verified
+byte for byte against the deployed file. The development settings match
+the pinned source byte for byte. The build ZIP and the two settings files
+account for all 77 Kudu ZIP entries, and each retained archive entry
+matches its deployed bytes. The live app was used for the visitor check.
+Recovery was verified offline.
 
 ## Restore and verify
 
 1. Suspend promotion. If B1 needs repair, verify the `build.zip` checksum,
-   then unpack it in a private temporary directory. Copy in the private
-   `appsettings.json` referenced by `restore.json` and apply its recorded
-   `LocalGalleryDirectory` override. Add `appsettings.Development.json`
-   from the pinned legacy commit. Keep these files private throughout.
+   then unpack it in a private temporary directory. Retrieve the Keychain
+   item referenced by `restore.json` into `appsettings.json` in that
+   directory. Add `appsettings.Development.json` from the pinned legacy
+   commit. Keep these files private throughout.
 2. Restore the recorded App Service runtime settings. Zip the contents of
    the temporary directory with `web.config` and `web.dll` at the archive
    root. Deploy the prebuilt package with
