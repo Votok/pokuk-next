@@ -81,9 +81,11 @@ To enable development deployment, configure the GitHub environment
 dedicated Azure deployment identity with a federated credential for
 `repo:Votok/pokuk-next:environment:azure-development`. Grant that identity
 Container Apps Contributor at the development app and AcrPush plus Reader
-at the development registry. Set the environment variables
+at the development registry. Set the environment secrets
 `AZURE_DEVELOPMENT_CLIENT_ID`, `AZURE_DEVELOPMENT_TENANT_ID`,
-`AZURE_DEVELOPMENT_SUBSCRIPTION_ID`, `AZURE_DEVELOPMENT_APP`,
+and `AZURE_DEVELOPMENT_SUBSCRIPTION_ID` so those identifiers are masked
+in the public workflow logs. Set the environment variables
+`AZURE_DEVELOPMENT_APP`,
 `AZURE_DEVELOPMENT_RESOURCE_GROUP`, `AZURE_DEVELOPMENT_REGISTRY`, and
 `AZURE_DEVELOPMENT_REGISTRY_SERVER`. The app and registry share a resource
 group. Set the repository Actions variable
